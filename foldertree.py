@@ -1,7 +1,7 @@
 import os
 import sys
 
-IGNORE_FOLDERS = {"node_modules"}
+IGNORE_FOLDERS = {"node_modules","venv",".git"}
 
 def generate_tree(root_path, prefix=""):
     items = [
