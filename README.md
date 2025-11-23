@@ -179,25 +179,29 @@ WifiLoadBalancing/
 ```
 🧪 How to Run the Project
 ✔ Backend (FastAPI WebSocket)
+```
 cd WifiLoadBalancing
 source venv/bin/activate  (or venv\Scripts\activate on Windows)
 python src/main.py
 
-
+```
 Backend runs on:
 
+```
 http://127.0.0.1:8000
-
+```
 
 WebSocket endpoint:
-
+```
 ws://127.0.0.1:8000/ws
-
+```
 ✔ Frontend (D3.js Visualization)
+```
 cd WifiLoadBalancing/frontend
 python -m http.server
-
+```
 
 Open in browser:
-
+```
 http://127.0.0.1:8000/index.html
+```
