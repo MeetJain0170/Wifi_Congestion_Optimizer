@@ -1,6 +1,7 @@
 import random
 import json
 from pathlib import Path
+from algorithms.greedy_redistribution import GreedyRedistributor
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
@@ -25,6 +26,14 @@ class WifiSimulator:
         for user in self.clients:
             user["x"] = (user["x"] + random.randint(-3, 3)) % 200
             user["y"] = (user["y"] + random.randint(-3, 3)) % 200
+            
+        # Apply greedy redistribution
+        gr = GreedyRedistributor(self.aps, self.clients)
+        gr.redistribute()
+        for user in self.clients:
+            if "nearest_ap" in user:
+                user["connected_ap"] = user["nearest_ap"]
+
 
     def get_state(self):
         """Return the state object expected by main.py"""

@@ -15,7 +15,7 @@ from pathlib import Path
 NUM_APS = 8
 NUM_USERS = 120
 
-OUT_DIR = Path("data")
+OUT_DIR = Path(__file__).resolve().parents[2] / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CHANNELS = [1, 6, 11]
