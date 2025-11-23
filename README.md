@@ -130,67 +130,78 @@ WebSocket data every second
 
 Gives a real-time view of network balancing.
 
-🗂️ Folder Structure
+---
+
+# 🗂️ Folder Structure
+
+```txt
 WifiLoadBalancing/
 │
-├── frontend/                 # D3.js Live Visualization UI
-│   ├── index.html
+├── frontend/                       # 🌐 D3.js Live Visualization UI
+│   ├── index.html                  # → Main frontend page (Live Server)
 │   └── data/
-│        ├── aps.json
-│        └── users.json
+│       ├── aps.json                # → Static AP layout for drawing
+│       ├── users.json              # → Static user layout (initial positions)
+│       └── campus_layout.json      # → Multi-floor campus map definition
 │
 ├── src/
-│   ├── main.py               # WebSocket backend (runs simulation)
-│   ├── run_simulation.py     # Offline algorithm testing
-│   │
-│   ├── simulation/
-│   │   ├── simulator.py      # Niyati's simulation engine
-│   │   ├── movement_generator.py
-│   │   ├── environment_config.py
-│   │   └── metrics.py
-│   │
-│   ├── algorithms/
-│   │   ├── graph_model.py            # Reva's flow network
-│   │   ├── mcmf.py                   # Reva's MCMF implementation
-│   │   ├── cost_function.py          # Joint cost logic
-│   │   ├── greedy_redistribution.py  # Meet’s load balancing
-│   │   └── priority_queue.py         # Meet’s PQ logic
-│   │
-│   └── utils/
-│       ├── file_loader.py
-│       ├── random_data_generator.py
-│       └── visualization.py
+│   ├── main.py                     # ⚡ FastAPI backend + WebSocket broadcaster
+│   ├── run_simulation.py           # 🎯 Offline algorithm test runner
 │
-├── data/                     # Initial backend input
-│   ├── aps.json
-│   ├── users.json
-│   └── config.json
+│   ├── simulation/                 # 🧠 Core simulation engine
+│   │   ├── simulator.py            # → Movement + RSSI + AP load + greedy
+│   │   ├── movement_generator.py   # → Random walk user movement
+│   │   ├── environment_config.py   # → Simulation constants
+│   │   ├── metrics.py              # → Load/fairness metrics
+│   │   └── generate_initial_data.py# → Generates realistic AP/user dataset
 │
-├── results/                  # Simulation outputs
+│   ├── algorithms/                 # 🧮 Algorithm implementations
+│   │   ├── graph_model.py          # → Builds bipartite graph for MCMF
+│   │   ├── mcmf.py                 # → Reva’s Min-Cost-Max-Flow
+│   │   ├── cost_function.py        # → Combined cost scoring
+│   │   ├── greedy_redistribution.py# → Meet’s smart greedy balancing
+│   │   └── priority_queue.py       # → Stable PQ for greedy
 │
-└── README.md
+│   └── utils/                      # 🧰 Helper utilities
+│       ├── file_loader.py          # → Loads dataset files
+│       ├── random_data_generator.py# → Creates synthetic distributions
+│       └── visualization.py        # → Debug visualization (optional)
+│
+├── data/                           # 📦 Initial backend input
+│   ├── aps.json                    # → AP positions + load
+│   ├── users.json                  # → User initial positions + RSSI
+│   └── config.json                 # → Global AP/user settings
+│
+├── results/                        # 📊 Saved simulation outputs
+│
+└── README.md                       # 📘 Documentation
 
+```
 🧪 How to Run the Project
 ✔ Backend (FastAPI WebSocket)
+```
 cd WifiLoadBalancing
 source venv/bin/activate  (or venv\Scripts\activate on Windows)
 python src/main.py
 
-
+```
 Backend runs on:
 
+```
 http://127.0.0.1:8000
-
+```
 
 WebSocket endpoint:
-
+```
 ws://127.0.0.1:8000/ws
-
+```
 ✔ Frontend (D3.js Visualization)
+```
 cd WifiLoadBalancing/frontend
 python -m http.server
-
+```
 
 Open in browser:
-
+```
 http://127.0.0.1:8000/index.html
+```
