@@ -125,6 +125,10 @@ AP-Killer deploy/recall switch, 3 types of Network Bands with their respective f
 
 <img width="292" height="999" alt="Screenshot 2025-11-26 004731" src="https://github.com/user-attachments/assets/059ec417-e674-4ffc-a340-b77bc234ff62" />
 
+Heatmap, Red - high commotion, Yellow - medium commotion, Green - low commotion
+
+<img width="548" height="726" alt="image" src="https://github.com/user-attachments/assets/82480ea3-4aa8-4b71-b9d8-c83c1d16e144" />
+
 AP-Killer in action. Its the movable user with a very high load that can be deployed, recalled, traversed to all the floors.
 
 <img width="1143" height="494" alt="Screenshot 2025-11-26 004900" src="https://github.com/user-attachments/assets/6d98c71e-69bb-436d-b881-cdfaa56bc5a9" />
