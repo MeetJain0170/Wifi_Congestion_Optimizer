@@ -1,4 +1,4 @@
-# 📡 WiFi Congestion Balancing System  
+<img width="1919" height="1079" alt="Screenshot 2025-11-26 004745" src="https://github.com/user-attachments/assets/94686909-de5f-44f2-bf8e-a5d9c258ef85" /># 📡 WiFi Congestion Balancing System  
 ### Intelligent Multi-Floor AP Load Distribution • Real-time Visualization • Algorithmic Network Simulation
 
 This project simulates and visualizes **WiFi Access Point congestion** across a multi-floor campus using advanced algorithms, live WebSocket updates, and an interactive D3.js interface.
@@ -110,80 +110,56 @@ Wifi_Congestion_System/
 
 ---
 
-## 🖼️ Screenshots / Demo (Add later)
-> Replace these with real screenshots
+## 🖼️ Screenshots / Demo 
 
+Floor Overview - Can add/subtract user from here and also check the load on that particular floor + the current number of users on that floor.
 
+<img width="295" height="632" alt="Screenshot 2025-11-26 004702" src="https://github.com/user-attachments/assets/ebf54724-ed40-4eb1-8b9f-b40d9e5f64d5" />
 
+A live status of all Users, Access points, Overloaded AP's, Average Load.
 
+<img width="328" height="152" alt="Screenshot 2025-11-26 004709" src="https://github.com/user-attachments/assets/f3c1fdc1-6891-47e4-8847-0125110be028" />
 
+Legend, Heatmap which shows which room has high or low user commotion, Debug Controls shows the console and has reconnect and Test API buttons for their respective purposes, 
+AP-Killer deploy/recall switch, 3 types of Network Bands with their respective features, zoom in and zoom out buttons.
 
+<img width="292" height="999" alt="Screenshot 2025-11-26 004731" src="https://github.com/user-attachments/assets/059ec417-e674-4ffc-a340-b77bc234ff62" />
 
+AP-Killer in action. Its the movable user with a very high load that can be deployed, recalled, traversed to all the floors.
 
----
+<img width="1143" height="494" alt="Screenshot 2025-11-26 004900" src="https://github.com/user-attachments/assets/6d98c71e-69bb-436d-b881-cdfaa56bc5a9" />
 
-## 🔌 API Endpoints
+2.4GHz- Large range, low load, slow network flow (less internet speed)
 
-### **State & System**
-GET /status
-GET /state
+<img width="725" height="960" alt="Screenshot 2025-11-26 005535" src="https://github.com/user-attachments/assets/14677bc5-1e97-4e45-acc1-01054d4200da" />
 
-markdown
+5GHz- Small range, high network flow (faster internet speed)
 
+<img width="722" height="961" alt="Screenshot 2025-11-26 005542" src="https://github.com/user-attachments/assets/c2886680-8d0d-4566-aa95-5822486c74f4" />
 
-### **User Management**
-POST /floor/{level}/add_user
-POST /floor/{level}/remove_user
+6GHz- Smallest range almost like a 5 feet distance from the AP, Very high network flow (fastest internet speed) 
 
-markdown
+<img width="719" height="950" alt="Screenshot 2025-11-26 005551" src="https://github.com/user-attachments/assets/bc84fd61-0a41-492c-b2cd-141e1ef07081" />
 
+Full frontend
 
-### **Band Control**
-POST /setband
-{
-"band": "2.4" | "5" | "6"
-}
-
-markdown
-
-
-### **AP-Killer**
-POST /apkiller/deploy
-POST /apkiller/withdraw
-POST /apkiller/floor/{level}
-POST /apkiller/move { vx, vy }
-
-
-
-
----
+<img width="1919" height="1079" alt="Screenshot 2025-11-26 004745" src="https://github.com/user-attachments/assets/4e6f0926-eed0-4905-ad92-120893d7e09b" />
 
 ## 🛠️ Setup Instructions
 
 ### **1. Install dependencies**
 pip install -r requirements.txt
 
-markdown
-
-
 ### **2. Generate initial data**
 python WifiLoadBalancing/src/simulation/generate_initial_data.py
-
-markdown
 
 
 ### **3. Run backend**
 uvicorn WifiLoadBalancing.src.main:app --reload --port 8000
 
-markdown
-
-
 ### **4. Open frontend**
 Just open:
 WifiLoadBalancing/frontend/index.html
-
-
-
 (or serve using Live Server)
 
 ---
@@ -199,8 +175,9 @@ WifiLoadBalancing/frontend/index.html
 
 ## 👨‍💻 Authors
 **Meet Jain**  
-Advanced Algorithms Project  
-UGDX School of Technology
+- Email: meetjain1333@gmail.com
+**Reva Shukla** 
+**Niyati Sardana**
 
 ---
 
