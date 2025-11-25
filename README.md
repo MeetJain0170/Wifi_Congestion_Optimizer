@@ -176,7 +176,9 @@ WifiLoadBalancing/frontend/index.html
 ## 👨‍💻 Authors
 **Meet Jain**  
 - Email: meetjain1333@gmail.com
+  
 **Reva Shukla** 
+
 **Niyati Sardana**
 
 ---
