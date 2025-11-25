@@ -1,207 +1,213 @@
-📌 Project Title:
+# 📡 WiFi Congestion Balancing System  
+### Intelligent Multi-Floor AP Load Distribution • Real-time Visualization • Algorithmic Network Simulation
 
-Campus WiFi Load Balancing Using Advanced Algorithms
+This project simulates and visualizes **WiFi Access Point congestion** across a multi-floor campus using advanced algorithms, live WebSocket updates, and an interactive D3.js interface.
 
-🏫 Course:
+It solves the common problem found in real universities:  
+> *“Everyone connects to the closest AP → a few APs explode with load while others sit idle.”*
 
-Advanced Algorithms
-
-👥 Team Members:
-
-Reva Shukla — Algorithm Lead (MCMF, Graph Model, Cost Function)
-
-Niyati — Simulation Lead (Movement, RSSI, AP Load)
-
-Meet — Load Balancing Lead (Greedy Redistribution, Priority Queue)
-
-🚀 Project Overview
-
-Large university campuses have multiple WiFi access points (APs).
-Students automatically connect to the nearest AP, causing:
-
-Some APs to overload
-
-Other APs to remain underutilized
-
-Poor bandwidth and unstable connectivity
-
-Our system solves this by implementing:
-
-✔ Minimum-Cost Maximum Flow (MCMF)
-
-For globally optimal user → AP assignment.
-
-✔ Greedy Load Redistribution
-
-For fast real-time adjustments when APs overload.
-
-✔ Priority Queue (Min-Heap)
-
-To efficiently select which users to move.
-
-✔ Dynamic Simulation + Live Visualization
-
-Using WebSockets + D3.js to show real-time movement & load changes.
-
-
-System Architecture
-
- Users Move → RSSI Changes → AP Load Changes →
-     ↓               ↓               ↓
-        Simulation Layer (Niyati)
-     ↓               ↓               ↓
- Graph & Cost Model (Reva) → MCMF (Optimal Assignment)
-     ↓
- Greedy PQ Balancing (Meet) → Fix Overloads
-     ↓
- WebSocket Backend (Reva)
-     ↓
- D3.js Frontend (Live Visualization)
-
-
-
-
-Core Components
-1️⃣ Simulation Layer (Niyati)
-
-Handles real-world WiFi dynamics:
-
-User movement
-
-RSSI calculation (based on distance and path loss formula)
-
-AP airtime and load calculation
-
-State updates every simulation tick
-
-This layer feeds live data into the algorithms.
-
-2️⃣ Algorithm Layer (Reva & Meet)
-🔹 Minimum-Cost Maximum Flow (Reva)
-
-Builds a flow network:
-
-Source → Users → APs → Sink
-
-
-Cost includes:
-
-Distance
-
-RSSI penalty
-
-Airtime usage
-
-Sticky client penalty
-
-Channel interference
-
-MCMF produces globally optimal AP assignments.
-
-🔹 Greedy Load Redistribution (Meet)
-
-Runs between MCMF steps.
-
-Detect overloaded APs
-
-Push affected users into a priority queue
-
-Move weakest users (low RSSI / high usage)
-
-Select nearest alternative AP with free capacity
-
-Fast and efficient for real-time stability.
-
-3️⃣ Frontend Visualization Layer
-
-Interactive dashboard using D3.js:
-
-Live moving users
-
-AP coverage circles
-
-AP colors based on load
-
-Lines from users → assigned AP
-
-Tooltips with RSSI, load, airtime, channel, etc.
-
-WebSocket data every second
-
-Gives a real-time view of network balancing.
+This system balances users intelligently across APs in real time, visualizes their movement, and evaluates dynamic network health.
 
 ---
 
-# 🗂️ Folder Structure
+## 🚀 Features
 
-```txt
-WifiLoadBalancing/
-│
-├── frontend/                       # 🌐 D3.js Live Visualization UI
-│   ├── index.html                  # → Main frontend page (Live Server)
-│   └── data/
-│       ├── aps.json                # → Static AP layout for drawing
-│       ├── users.json              # → Static user layout (initial positions)
-│       └── campus_layout.json      # → Multi-floor campus map definition
-│
-├── src/
-│   ├── main.py                     # ⚡ FastAPI backend + WebSocket broadcaster
-│   ├── run_simulation.py           # 🎯 Offline algorithm test runner
-│
-│   ├── simulation/                 # 🧠 Core simulation engine
-│   │   ├── simulator.py            # → Movement + RSSI + AP load + greedy
-│   │   ├── movement_generator.py   # → Random walk user movement
-│   │   ├── environment_config.py   # → Simulation constants
-│   │   ├── metrics.py              # → Load/fairness metrics
-│   │   └── generate_initial_data.py# → Generates realistic AP/user dataset
-│
-│   ├── algorithms/                 # 🧮 Algorithm implementations
-│   │   ├── graph_model.py          # → Builds bipartite graph for MCMF
-│   │   ├── mcmf.py                 # → Reva’s Min-Cost-Max-Flow
-│   │   ├── cost_function.py        # → Combined cost scoring
-│   │   ├── greedy_redistribution.py# → Meet’s smart greedy balancing
-│   │   └── priority_queue.py       # → Stable PQ for greedy
-│
-│   └── utils/                      # 🧰 Helper utilities
-│       ├── file_loader.py          # → Loads dataset files
-│       ├── random_data_generator.py# → Creates synthetic distributions
-│       └── visualization.py        # → Debug visualization (optional)
-│
-├── data/                           # 📦 Initial backend input
-│   ├── aps.json                    # → AP positions + load
-│   ├── users.json                  # → User initial positions + RSSI
-│   └── config.json                 # → Global AP/user settings
-│
-├── results/                        # 📊 Saved simulation outputs
-│
-└── README.md                       # 📘 Documentation
+### **🔧 Backend Simulation**
+- Real multi-floor environment with 7 floors & dozens of rooms  
+- Intelligent user placement & movement  
+- Access Point constraints (band, airtime, load, capacity)  
+- RSSI-based AP selection  
+- Band-based coverage simulation (2.4 / 5 / 6 GHz)  
+- Dynamic AP reassignment  
+- Live WebSocket state updates (every 0.2 seconds)
 
-```
-🧪 How to Run the Project
-✔ Backend (FastAPI WebSocket)
-```
-cd WifiLoadBalancing
-source venv/bin/activate  (or venv\Scripts\activate on Windows)
-python src/main.py
+### **📊 Frontend Visualization**
+- Full-campus multi-floor SVG visualization  
+- Animated WiFi coverage rings  
+- Live user movement trails  
+- Dotted lines showing user–AP associations  
+- Sidebar floor dashboard (load per floor, user count)  
+- AP-Killer (test tool) that floods APs with load  
+- Heatmap mode for user density  
+- WebSocket live status & error panel  
+- Glassmorphism UI with glowing AP nodes
 
-```
-Backend runs on:
+### **🧠 Algorithms Integrated**
+1. **Minimum-Cost Maximum Flow (MCMF)**  
+2. **Greedy Load Redistribution**  
+3. **Priority Queue–based Assignment**  
+4. **Graph Modeling for AP Selection**
 
-```
-http://127.0.0.1:8000
-```
+Used to distribute users across APs **optimally and fairly**.
 
-WebSocket endpoint:
-```
-ws://127.0.0.1:8000/ws
-```
-✔ Frontend (D3.js Visualization)
-```
-cd WifiLoadBalancing/frontend
-python -m http.server
-```
+---
 
-Open in browser:
-```
-http://127.0.0.1:8000/index.html
-```
+## 🧱 Project Architecture
+
+Wifi_Congestion_System/
+│
+├── WifiLoadBalancing
+│ ├── data/
+│ │ ├── aps.json # Access point definitions
+│ │ ├── config.json # Default band, settings
+│ │ └── users.json # Generated simulation users
+│ │
+│ ├── frontend/
+│ │ ├── assets/bg.png
+│ │ ├── data/campus_layout.json # Rooms, floors, coordinates
+│ │ └── index.html # Full interactive visualization
+│ │
+│ ├── src/
+│ │ ├── algorithms/
+│ │ │ ├── cost_function.py
+│ │ │ ├── graph_model.py
+│ │ │ ├── greedy_redistribution.py
+│ │ │ ├── mcmf.py
+│ │ │ └── priority_queue.py
+│ │ │
+│ │ ├── simulation/
+│ │ │ ├── simulator.py # Core simulation engine
+│ │ │ ├── ap_killer.py # Load-attack tool
+│ │ │ └── generate_initial_data.py# User & AP initialization script
+│ │ │
+│ │ └── main.py # FastAPI backend + websocket
+│
+├── requirements.txt
+├── foldertree.py
+└── runcode.txt
+
+yaml
+Copy code
+
+---
+
+## ⚙️ How It Works
+
+### **Backend (FastAPI + Python)**
+- Runs a simulation loop (`simulator_loop`)  
+- Updates user movement, AP load, connectivity  
+- Calculates dynamic RSSI based on band + distance  
+- Sends complete state via WebSocket to frontend  
+- Exposes REST APIs to add/remove users, change band, move AP-Killer
+
+### **Frontend (D3.js + TailwindCSS)**
+- Renders the entire campus floor-by-floor  
+- Updates AP load arcs and user movement in real time  
+- Shows heatmap overlays for dense rooms  
+- Lets you switch WiFi bands and visualize coverage drop  
+- Provides debug logs + network status
+
+---
+
+## 🎮 Interaction Controls
+
+| Feature | Control |
+|--------|---------|
+| Switch WiFi Band | Buttons: **2.4 / 5 / 6 GHz** |
+| Move AP-Killer | `W A S D` keys |
+| Deploy AP-Killer | Button in sidebar |
+| Add user to a floor | Sidebar + button |
+| Remove user | Sidebar – button |
+| Zoom | + / – buttons |
+| Pan | Mouse drag |
+
+---
+
+## 🖼️ Screenshots / Demo (Add later)
+> Replace these with real screenshots
+
+
+
+
+
+yaml
+Copy code
+
+---
+
+## 🔌 API Endpoints
+
+### **State & System**
+GET /status
+GET /state
+
+markdown
+Copy code
+
+### **User Management**
+POST /floor/{level}/add_user
+POST /floor/{level}/remove_user
+
+markdown
+Copy code
+
+### **Band Control**
+POST /setband
+{
+"band": "2.4" | "5" | "6"
+}
+
+markdown
+Copy code
+
+### **AP-Killer**
+POST /apkiller/deploy
+POST /apkiller/withdraw
+POST /apkiller/floor/{level}
+POST /apkiller/move { vx, vy }
+
+yaml
+Copy code
+
+---
+
+## 🛠️ Setup Instructions
+
+### **1. Install dependencies**
+pip install -r requirements.txt
+
+markdown
+Copy code
+
+### **2. Generate initial data**
+python WifiLoadBalancing/src/simulation/generate_initial_data.py
+
+markdown
+Copy code
+
+### **3. Run backend**
+uvicorn WifiLoadBalancing.src.main:app --reload --port 8000
+
+markdown
+Copy code
+
+### **4. Open frontend**
+Just open:
+WifiLoadBalancing/frontend/index.html
+
+yaml
+Copy code
+(or serve using Live Server)
+
+---
+
+## 🎯 Future Improvements
+- ML-based AP selection  
+- Predictive load balancing  
+- Building-wide roaming optimization  
+- Real AP integration (UniFi / Cisco)  
+- Admin dashboard with alerts
+
+---
+
+## 👨‍💻 Authors
+**Meet Jain**  
+Advanced Algorithms Project  
+UGDX School of Technology
+
+---
+
+## ⭐ If you like this project…
+Consider giving it a **★ star** on GitHub!
+
+---
