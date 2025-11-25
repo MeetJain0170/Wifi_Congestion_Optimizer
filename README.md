@@ -43,7 +43,7 @@ Used to distribute users across APs **optimally and fairly**.
 ---
 
 ## 🧱 Project Architecture
-
+```
 Wifi_Congestion_System/
 │
 ├── WifiLoadBalancing
@@ -75,10 +75,7 @@ Wifi_Congestion_System/
 ├── requirements.txt
 ├── foldertree.py
 └── runcode.txt
-
-yaml
-Copy code
-
+```
 ---
 
 ## ⚙️ How It Works
@@ -120,8 +117,8 @@ Copy code
 
 
 
-yaml
-Copy code
+
+
 
 ---
 
@@ -132,14 +129,14 @@ GET /status
 GET /state
 
 markdown
-Copy code
+
 
 ### **User Management**
 POST /floor/{level}/add_user
 POST /floor/{level}/remove_user
 
 markdown
-Copy code
+
 
 ### **Band Control**
 POST /setband
@@ -148,7 +145,7 @@ POST /setband
 }
 
 markdown
-Copy code
+
 
 ### **AP-Killer**
 POST /apkiller/deploy
@@ -156,8 +153,8 @@ POST /apkiller/withdraw
 POST /apkiller/floor/{level}
 POST /apkiller/move { vx, vy }
 
-yaml
-Copy code
+
+
 
 ---
 
@@ -167,26 +164,26 @@ Copy code
 pip install -r requirements.txt
 
 markdown
-Copy code
+
 
 ### **2. Generate initial data**
 python WifiLoadBalancing/src/simulation/generate_initial_data.py
 
 markdown
-Copy code
+
 
 ### **3. Run backend**
 uvicorn WifiLoadBalancing.src.main:app --reload --port 8000
 
 markdown
-Copy code
+
 
 ### **4. Open frontend**
 Just open:
 WifiLoadBalancing/frontend/index.html
 
-yaml
-Copy code
+
+
 (or serve using Live Server)
 
 ---
