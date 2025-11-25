@@ -1,4 +1,4 @@
-<img width="1919" height="1079" alt="Screenshot 2025-11-26 004745" src="https://github.com/user-attachments/assets/94686909-de5f-44f2-bf8e-a5d9c258ef85" /># 📡 WiFi Congestion Balancing System  
+# 📡 WiFi Congestion Balancing System  
 ### Intelligent Multi-Floor AP Load Distribution • Real-time Visualization • Algorithmic Network Simulation
 
 This project simulates and visualizes **WiFi Access Point congestion** across a multi-floor campus using advanced algorithms, live WebSocket updates, and an interactive D3.js interface.
