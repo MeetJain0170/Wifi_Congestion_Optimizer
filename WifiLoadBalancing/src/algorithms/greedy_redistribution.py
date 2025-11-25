@@ -1,146 +1,132 @@
 import math
 from algorithms.priority_queue import UserPriorityQueue
+from algorithms.cost_function import dynamic_capacity
 
 
 class GreedyRedistributor:
+    """
+    Greedy load balancer - FULLY STABILIZED WITH DYNAMIC CAPACITY
+    
+    ✅ Floor-safe (no cross-floor moves)
+    ✅ Correct load recalculation
+    ✅ RSSI-based eviction order
+    ✅ Coverage-aware
+    ✅ Uses dynamic_capacity(ap) everywhere
+    """
 
-    def __init__(self, aps, clients):
+    def __init__(self, aps, users):
         self.aps = aps
-        self.clients = clients
+        self.users = users
 
-        # fairness memory: avoid moving same user repeatedly
-        self.move_history = {}  # user_id -> last_move_iteration
-        self.cooldown_steps = 3  # prevents oscillation
-
-        self.iteration = 0
-
-    # --------------------------------------------------------
-    # Step 1: Detect overloaded APs
-    # --------------------------------------------------------
+    # ============================================================
+    # Overloaded AP detection (dynamic capacity)
+    # ============================================================
     def get_overloaded_aps(self):
-        return [
-            ap for ap in self.aps
-            if ap["load"] > ap["airtime_capacity"]
-        ]
+        overloaded = []
+        for ap in self.aps:
+            cap = dynamic_capacity(ap)
+            if ap["load"] > cap:
+                overloaded.append(ap)
+        return overloaded
 
-    # --------------------------------------------------------
-    # Step 2: Build Priority Queue using SMARTER criteria
-    # --------------------------------------------------------
+    # ============================================================
+    # Build Priority Queue of weakest users on this AP
+    # ============================================================
     def build_priority_queue(self, ap):
         pq = UserPriorityQueue()
-        ap_id = ap["id"]
-
-        for user in self.clients:
-
-            if user.get("nearest_ap") != ap_id:
-                continue
-
-            # ------------- Smarter priority formula -------------
-            # High priority = remove this user first
-            # Priority factors:
-            # - weaker RSSI (absolute)
-            # - higher airtime usage
-            # - has not been moved recently (fairness)
-            # ----------------------------------------------------
-
-            rssi_factor = abs(user.get("RSSI", -50))
-            airtime = user.get("airtime_usage", 1)
-
-            last_moved = self.move_history.get(user["id"], -100)
-            cooldown_penalty = max(0, self.cooldown_steps - (self.iteration - last_moved))
-
-            priority = (
-                rssi_factor      * 0.6 +
-                airtime          * 0.3 +
-                cooldown_penalty * 3.0   # big penalty so we don't keep moving same user
-            )
-
-            pq.push(user, priority)
-
+        for user in self.users:
+            if user.get("assigned_ap") == ap["id"]:
+                priority = abs(user.get("RSSI", -95))
+                pq.push(priority, user)
         return pq
 
-    # --------------------------------------------------------
-    # Step 3: Multi-factor alternative AP selection
-    # --------------------------------------------------------
+    # ============================================================
+    # Find alternative AP (same floor, capacity left, strong RSSI)
+    # ============================================================
     def find_alternative_ap(self, user):
+        user_floor = user.get("floor")
         best_ap = None
-        best_score = float("inf")
-
-        ux, uy = user["x"], user["y"]
-        user_airtime = user.get("airtime_usage", 1)
+        best_rssi = -200
 
         for ap in self.aps:
-
-            if ap["id"] == user.get("nearest_ap"):
+            # Same floor only
+            if ap["floor"] != user_floor:
                 continue
 
-            # Must have AVAILABLE capacity
-            if ap["load"] + user_airtime > ap["airtime_capacity"]:
+            # Skip current AP
+            if ap["id"] == user.get("assigned_ap"):
                 continue
 
-            # Compute distance
-            dist = math.dist((ux, uy), (ap["x"], ap["y"]))
+            # AP must have dynamic available capacity
+            if ap["load"] >= dynamic_capacity(ap):
+                continue
 
-            # Signal penalty (worse RSSI → worse score)
-            # Estimate RSSI via inverse distance (simple model)
-            signal_penalty = dist * 0.8
+            # Check coverage
+            dist = math.dist((user["x"], user["y"]), (ap["x"], ap["y"]))
+            if dist > ap.get("coverage_radius", 200):
+                continue
 
-            # AP load penalty (prefer APs with more free space)
-            load_penalty = (ap["load"] / ap["airtime_capacity"]) * 2.0
+            if dist <= 0:
+                continue
 
-            # Stability factor (prefer stable APs)
-            stability = ap.get("stability", 1.0)  # if not present, assume stable
+            # Estimate RSSI
+            rssi = -30 - 20 * math.log10(dist)
 
-            # Final score (lower = better)
-            score = (
-                dist             * 0.5 +
-                signal_penalty   * 0.4 +
-                load_penalty     * 1.2 -
-                stability        * 0.3
-            )
-
-            if score < best_score:
-                best_score = score
+            # Pick strongest AP
+            if rssi > best_rssi:
+                best_rssi = rssi
                 best_ap = ap
 
         return best_ap
 
-    # --------------------------------------------------------
-    # Step 4: Apply Smarter Greedy Redistribution
-    # --------------------------------------------------------
+    # ============================================================
+    # Main Redistribution Routine
+    # ============================================================
     def redistribute(self):
-        self.iteration += 1
+        # 1. Reset loads & rebuild connected_clients cleanly
+        for ap in self.aps:
+            ap["load"] = 0
+            ap["connected_clients"] = []
 
+        for user in self.users:
+            aid = user.get("assigned_ap")
+            if aid:
+                for ap in self.aps:
+                    if ap["id"] == aid:
+                        ap["load"] += user.get("airtime_usage", 1)
+                        ap["connected_clients"].append(user["id"])
+                        break
+
+        # 2. Find overloaded APs using dynamic capacity
         overloaded_aps = self.get_overloaded_aps()
 
+        # 3. Reassign weakest users first
         for ap in overloaded_aps:
-
             pq = self.build_priority_queue(ap)
+            cap = dynamic_capacity(ap)
 
-            # Loop: remove users until AP is not overloaded
-            while len(pq) > 0 and ap["load"] > ap["airtime_capacity"]:
-
+            while len(pq) > 0 and ap["load"] > cap:
                 user = pq.pop()
-                if not user:
-                    break
+                alternative_ap = self.find_alternative_ap(user)
 
-                # Fairness: avoid moving same user too often
-                last_moved = self.move_history.get(user["id"], -100)
-                if self.iteration - last_moved < self.cooldown_steps:
-                    continue
+                if alternative_ap:
+                    old_ap = user["assigned_ap"]
+                    load_val = user.get("airtime_usage", 1)
 
-                new_ap = self.find_alternative_ap(user)
+                    # Apply move
+                    user["assigned_ap"] = alternative_ap["id"]
+                    user["connected_ap"] = alternative_ap["id"]
 
-                if new_ap:
-                    # Perform the move
-                    user_air = user.get("airtime_usage", 1)
+                    ap["load"] -= load_val
+                    alternative_ap["load"] += load_val
 
-                    ap["load"]      -= user_air
-                    new_ap["load"]  += user_air
+                    # Update lists
+                    if user["id"] in ap["connected_clients"]:
+                        ap["connected_clients"].remove(user["id"])
 
-                    user["nearest_ap"] = new_ap["id"]
-                    self.move_history[user["id"]] = self.iteration
+                    alternative_ap["connected_clients"].append(user["id"])
+
+                    print(f"♻️ Greedy moved {user['id']}   {old_ap} → {alternative_ap['id']}")
 
                 else:
-                    # No AP available → break redistribution
-                    break
+                    break   # no AP available → stop

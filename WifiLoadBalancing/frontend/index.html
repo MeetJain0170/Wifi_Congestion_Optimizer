@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <title>WiFi Load Balancing — Live Visualization</title>
@@ -16,15 +17,27 @@
             overflow: hidden;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
             background:
-                radial-gradient(circle at top, rgba(148,163,184,0.35) 0%, rgba(15,23,42,0.8) 40%, #020617 100%),
+                radial-gradient(circle at top, rgba(148, 163, 184, 0.35) 0%, rgba(15, 23, 42, 0.8) 40%, #020617 100%),
                 url("./assets/bg.png") center/cover fixed no-repeat;
             background-blend-mode: soft-light;
             color: white;
         }
 
         svg {
-            background: rgba(3,7,18,0.9);
+            background: rgba(3, 7, 18, 0.9);
             display: block;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Heavy glass + inner glow */
@@ -34,8 +47,8 @@
             background: rgba(15, 23, 42, 0.72);
             border: 1px solid rgba(255, 255, 255, 0.20);
             box-shadow:
-                0 20px 40px rgba(0,0,0,0.7),
-                inset 0 0 0 0.5px rgba(255,255,255,0.12);
+                0 20px 40px rgba(0, 0, 0, 0.7),
+                inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
             border-radius: 18px;
         }
 
@@ -44,21 +57,29 @@
             -webkit-backdrop-filter: blur(18px) saturate(180%);
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid rgba(148, 163, 184, 0.35);
-            box-shadow: 0 18px 35px rgba(0,0,0,0.6);
+            box-shadow: 0 18px 35px rgba(0, 0, 0, 0.6);
             border-radius: 16px;
         }
 
         .room-rect {
-            stroke: rgba(148,163,184,0.25);
-            fill: rgba(15,23,42,0.85);
+            stroke: rgba(148, 163, 184, 0.25);
+            fill: rgba(15, 23, 42, 0.85);
             rx: 10;
             ry: 10;
         }
 
-        .user {
+        .user:not(.apkiller) {
             fill: #22d3ee;
             transition: 0.25s;
         }
+
+        .apkiller {
+            fill: #ff0000 !important;
+            r: 8 !important;
+            filter: drop-shadow(0 0 10px #ff2222);
+        }
+
+
         .user:hover {
             r: 7 !important;
             filter: drop-shadow(0 0 6px #22d3ee);
@@ -70,9 +91,9 @@
 
         .tooltip {
             position: absolute;
-            background: rgba(15,23,42,0.94);
+            background: rgba(15, 23, 42, 0.94);
             padding: 8px 10px;
-            border: 1px solid rgba(148,163,184,0.5);
+            border: 1px solid rgba(148, 163, 184, 0.5);
             border-radius: 8px;
             pointer-events: none;
             opacity: 0;
@@ -85,9 +106,17 @@
         }
 
         @keyframes apPulse {
-            0%   { opacity: 0.18; }
-            50%  { opacity: 0.35; }
-            100% { opacity: 0.18; }
+            0% {
+                opacity: 0.18;
+            }
+
+            50% {
+                opacity: 0.35;
+            }
+
+            100% {
+                opacity: 0.18;
+            }
         }
 
         .ap-range {
@@ -96,14 +125,25 @@
 
         /* Neon animated floor border */
         @keyframes neonBorder {
-            0%   { stroke-dashoffset: 0; opacity: 0.35; }
-            50%  { stroke-dashoffset: -40; opacity: 0.9; }
-            100% { stroke-dashoffset: -80; opacity: 0.35; }
+            0% {
+                stroke-dashoffset: 0;
+                opacity: 0.35;
+            }
+
+            50% {
+                stroke-dashoffset: -40;
+                opacity: 0.9;
+            }
+
+            100% {
+                stroke-dashoffset: -80;
+                opacity: 0.35;
+            }
         }
 
         .floor-neon {
             fill: none;
-            stroke: #a855f7;
+            stroke: #8db5e9;
             stroke-width: 2;
             stroke-linejoin: round;
             stroke-dasharray: 10 8;
@@ -118,620 +158,1406 @@
         .floor-card {
             transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         }
+
         .floor-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 16px 30px rgba(0,0,0,0.65);
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.65);
             border-color: rgba(248, 250, 252, 0.5);
-            background: radial-gradient(circle at top left, rgba(148,163,184,0.20), rgba(15,23,42,0.8));
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.20), rgba(15, 23, 42, 0.8));
         }
 
         /* Heatmap overlay rects */
         .room-heat {
             pointer-events: none;
         }
+
+        /* --- New Debug & Control Styles --- */
+        .debug-panel {
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #a5b4fc;
+        }
+
+        .debug-entry {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2px 0;
+        }
+
+        .debug-error {
+            color: #f87171;
+        }
+
+        .debug-warn {
+            color: #fbbf24;
+        }
+
+        .debug-success {
+            color: #34d399;
+        }
+
+        .debug-info {
+            color: #60a5fa;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .status-online {
+            background-color: #34d399;
+            color: #34d399;
+        }
+
+        .status-offline {
+            background-color: #f87171;
+            color: #f87171;
+        }
+
+        .status-connecting {
+            background-color: #fbbf24;
+            color: #fbbf24;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .update-card {
+            padding: 8px 10px;
+            background: rgba(148, 163, 184, 0.12);
+            border-left: 3px solid #38bdf8;
+            border-radius: 6px;
+            animation: fadeSlide 0.4s ease-out;
+        }
+        .update-card.new {
+            border-left-color: #22c55e;
+        }
+        .update-card.warn {
+            border-left-color: #eab308;
+        }
+        .update-card.error {
+            border-left-color: #ef4444;
+        }
+
+        .apkiller {
+            filter: drop-shadow(0 0 8px #ff4444);
+        }
+
+
     </style>
 </head>
 
 <body class="select-none">
 
-<!-- Header -->
-<header class="glass-panel w-full text-center py-4 text-xl font-semibold tracking-wide">
-    Campus WiFi Load Balancing — Live Multi-Floor Visualization
-</header>
+    <!-- Alarm toasts -->
+    <div id="alarm-container" style="position: fixed; top: 20px; right: 20px; width: 280px; z-index: 99999;">
+    </div>
 
-<!-- Canvas scroll area -->
-<div id="canvas" class="w-full h-[calc(100vh-64px)] overflow-auto">
-    <!-- svg injected by D3 -->
-</div>
-
-<div id="tooltip" class="tooltip"></div>
-
-<!-- Left Floor Dashboard (with mini-map-style cards) -->
-<div id="sidebar"
-     class="glass-panel fixed left-4 top-24 p-4 w-72 text-sm hidden z-20">
-</div>
-
-<!-- Bottom-Left Stats Panel -->
-<div id="stats-panel"
-     class="glass-panel fixed left-4 bottom-6 p-4 w-80 text-xs hidden z-20">
-    <!-- filled from JS -->
-</div>
-
-<!-- Legend + Heatmap toggle -->
-<div class="glass-panel fixed right-4 top-24 text-sm p-4 z-20 w-72">
-    <b class="text-lg">Legend</b><br><br>
-    <div class="space-y-1">
-        <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-green-400"></span>
-            <span>AP: Low load (0–40%)</span>
+    <!-- Header -->
+    <header class="glass-panel w-full text-center py-4 text-xl font-semibold tracking-wide relative">
+        AP ka AATANK — Live Multi-Floor Visualization
+        <div class="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-normal flex items-center gap-3">
+            <span id="ws-status" class="flex items-center">
+                <span class="status-dot status-offline"></span>
+                <span class="text-slate-300">Disconnected</span>
+            </span>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-            <span>AP: Medium load (40–70%)</span>
+    </header>
+
+    <!-- Canvas scroll area -->
+    <div id="canvas" class="w-full h-[calc(100vh-64px)] overflow-auto">
+        <!-- svg injected by D3 -->
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Left Floor Dashboard (with mini-map-style cards) -->
+    <div id="sidebar" class="glass-panel fixed left-4 top-24 p-4 w-72 text-sm hidden z-20">
+    </div>
+
+    <!-- Bottom-Left Stats Panel -->
+    <div id="stats-panel" class="glass-panel fixed left-4 bottom-6 p-4 w-80 text-xs hidden z-20">
+        <!-- filled from JS -->
+    </div>
+
+    <!-- Legend + Heatmap toggle -->
+    <div class="glass-panel fixed right-4 top-20 text-sm p-4 z-20 w-72">
+        <b class="text-lg">Legend</b><br><br>
+        <div class="space-y-1">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-green-400"></span>
+                <span>AP: Low load (0–40%)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                <span>AP: Medium load (40–70%)</span>
+            </div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                <span>AP: High load (70–100%)</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="w-3 h-3 rounded-full bg-cyan-300"></span>
+                <span>Users</span>
+            </div>
         </div>
+
+        <hr class="border-slate-600/50 my-3">
+
+        <div class="text-xs mb-2 font-semibold">User Density Heatmap</div>
         <div class="flex items-center gap-2 mb-2">
-            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-            <span>AP: High load (70–100%)</span>
+            <div class="flex-1 h-2 rounded-full bg-gradient-to-r from-emerald-400 via-amber-300 to-red-500"></div>
+            <span class="text-[10px] text-slate-300">low → high</span>
         </div>
-        <div class="flex items-center gap-2 mt-1">
-            <span class="w-3 h-3 rounded-full bg-cyan-300"></span>
-            <span>Users</span>
-        </div>
-    </div>
+        <p class="text-[11px] text-slate-300 mb-3">
+            Rooms with more users glow from green to red when heatmap is enabled.
+        </p>
 
-    <hr class="border-slate-600/50 my-3">
-
-    <div class="text-xs mb-2 font-semibold">User Density Heatmap</div>
-    <div class="flex items-center gap-2 mb-2">
-        <div class="flex-1 h-2 rounded-full bg-gradient-to-r from-emerald-400 via-amber-300 to-red-500"></div>
-        <span class="text-[10px] text-slate-300">low → high</span>
-    </div>
-    <p class="text-[11px] text-slate-300 mb-3">
-        Rooms with more users glow from green to red when heatmap is enabled.
-    </p>
-
-    <button id="heatmap-btn"
-            onclick="toggleHeatmap()"
+        <button id="heatmap-btn" onclick="toggleHeatmap()"
             class="glass-soft w-full py-2 text-xs flex items-center justify-between px-3 hover:bg-white/5">
-        <span>Heatmap</span>
-        <span id="heatmap-state" class="text-emerald-400 font-semibold">OFF</span>
-    </button>
-</div>
+            <span>Heatmap</span>
+            <span id="heatmap-state" class="text-emerald-400 font-semibold">OFF</span>
+        </button>
 
-<!-- Zoom Controls -->
-<div class="fixed bottom-6 right-6 flex gap-3 z-20">
-    <button onclick="zoomIn()" class="glass-panel px-4 py-2 rounded-lg text-lg hover:bg-white/10">+</button>
-    <button onclick="zoomOut()" class="glass-panel px-4 py-2 rounded-lg text-lg hover:bg-white/10">−</button>
-</div>
+        <hr class="border-slate-600/50 my-3">
 
-<script>
-let LAYOUT = null;
-let svg, svgGroup, tooltip;
-let zoom;
-let userTrails = {}; // id -> [{x,y}, ...]
-let lastState = null;
-let heatmapEnabled = false;
+        <div class="text-xs mb-2 font-semibold">Debug Controls</div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <button onclick="reconnectWebSocket()" class="btn-glass">🔄 Reconnect</button>
+            <button onclick="testBackend()" class="btn-glass">🔍 Test API</button>
+        </div>
 
-const MAX_TRAIL_POINTS = 5;
-const AP_RANGE_DEFAULT = 100;
+        <div class="text-xs mb-1 font-semibold">Console Log</div>
+        <div id="debug-console" class="glass-soft p-2 debug-panel rounded"></div> 
+            <!-- logs go here -->
 
-// floor level -> yTop in SVG coords
-const floorYByLevel = {};
+        <hr class="border-slate-600/50 my-3">
 
-async function loadLayout() {
-    LAYOUT = await fetch('./data/campus_layout.json').then(r => r.json());
-}
+        <div class="text-xs font-semibold mb-2">AP-Killer</div>
 
-function initSVG() {
-    const { width, floorHeight, margin } = LAYOUT.canvas;
-    const totalHeight = LAYOUT.floors.length * (floorHeight + margin) + margin;
+        <div class="glass-soft p-2 text-xs flex items-center justify-between gap-2">
+            <!-- Left column: Deploy / Withdraw -->
+            <div class="flex flex-col gap-2">
+                <button onclick="deployAPKiller()" class="btn-glass px-8 py-1 text-[10px]">
+                  🚀 Deploy
+                </button>
+                <button onclick="withdrawAPKiller()" class="btn-glass px-8 py-1 text-[10px]">
+                  🛑 Recall
+                </button>
+            </div>
 
-    svg = d3.select("#canvas")
-        .append("svg")
-        .attr("viewBox", `0 0 ${width + 40} ${totalHeight}`)
-        .attr("preserveAspectRatio", "xMidYMin meet")
-        .classed("w-full", true);
+            <!-- Right column: Floor + / - -->
+            <div class="flex flex-col items-center gap-1">
 
-    svgGroup = svg.append("g");
-    tooltip = d3.select("#tooltip");
+                <div class="flex items-center gap-1">
+                    <button class="btn-glass px-4 py-1 text-[20px]" onclick="apkFloorDown()">−</button>
 
-    // Gradient for AP coverage circles
-    const defs = svg.append("defs");
-    const radial = defs.append("radialGradient")
-        .attr("id", "apRangeGradient")
-        .attr("cx", "50%")
-        .attr("cy", "50%")
-        .attr("r", "50%");
-    radial.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#22c55e")
-        .attr("stop-opacity", 0.45);
-    radial.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#22c55e")
-        .attr("stop-opacity", 0);
+                    <span id="apk-floor" class="text-cyan-300 font-semibold text-[14px] px-[2px]">
+                        1
+                    </span>
 
-    zoom = d3.zoom()
-        .scaleExtent([0.4, 3])
-        .on("zoom", (event) => svgGroup.attr("transform", event.transform));
+                    <button class="btn-glass px-4 py-1 text-[20px]" onclick="apkFloorUp()">+</button>
+                </div>
+            </div>
+        </div>
 
-    svg.call(zoom);
-}
 
-/* Neutral rooms with a tiny color accent */
-function getRoomAccentColor(name) {
-    const n = name.toLowerCase();
-    if (n.includes("library")) return "#38bdf8";      // blue
-    if (n.includes("lab")) return "#a855f7";          // purple
-    if (n.includes("canteen")) return "#fb923c";      // orange
-    if (n.includes("class")) return "#e5e7eb";        // soft light
-    if (n.includes("success")) return "#22c55e";      // green
-    return "#9ca3af";                                 // neutral grey
-}
+        <div class="glass-soft p-3 mt-4 text-xs">
+            <div class="mb-2 font-semibold text-slate-200">Set WiFi Band</div>
 
-function drawStaticLayout() {
-    const floorsSorted = [...LAYOUT.floors].sort((a, b) => b.level - a.level);
-    const { margin, floorHeight, width } = LAYOUT.canvas;
+            <div class="grid grid-cols-3 gap-2">
+                <button class="btn-glass band-btn" data-band="2.4">2.4</button>
+                <button class="btn-glass band-btn" data-band="5">5</button>
+                <button class="btn-glass band-btn" data-band="6">6</button>
+            </div>
+        </div>
 
-    floorsSorted.forEach((floor, idx) => {
-        const top = margin + idx * (floorHeight + margin);
-        floorYByLevel[floor.level] = top;  // record for scroll
+        </div>
+    </div>
 
-        // Floor main panel
-        svgGroup.append("rect")
-            .attr("class", "floor-box")
-            .attr("x", margin)
-            .attr("y", top)
-            .attr("width", width - margin * 2)
-            .attr("height", floorHeight)
-            .attr("fill", "rgba(15,23,42,0.96)")
-            .attr("stroke", "rgba(148,163,184,0.35)")
-            .attr("rx", 18);
+    <!-- Zoom Controls -->
+    <div class="fixed bottom-3 right-6 flex gap-3 z-20">
+        <button onclick="zoomIn()" class="glass-panel px-4 py-2 rounded-lg text-lg hover:bg-white/10">+</button>
+        <button onclick="zoomOut()" class="glass-panel px-4 py-2 rounded-lg text-lg hover:bg-white/10">−</button>
+    </div>
 
-        // Neon border overlay
-        svgGroup.append("rect")
-            .attr("class", "floor-neon")
-            .attr("x", margin + 4)
-            .attr("y", top + 4)
-            .attr("width", width - margin * 2 - 8)
-            .attr("height", floorHeight - 8)
-            .attr("rx", 20);
+    <!-- System Updates / Changelog -->
+    <div id="updates-panel"
+        class="glass-panel fixed bottom-25 right-[10px] p-4 w-80 text-xs z-20 hidden transition-all duration-300">
+        <div class="text-sm font-semibold mb-2">System Updates</div>
+        <div id="updates-content" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+    </div>
 
-        // Floor label
-        svgGroup.append("text")
-            .attr("x", margin + 16)
-            .attr("y", top + 26)
-            .attr("fill", "#e5e7eb")
-            .attr("font-size", 14)
-            .attr("font-weight", "600")
-            .text(`Level ${floor.level} — ${floor.name}`);
 
-        // Rooms
-        floor.rooms?.forEach(room => {
-            const x = room.x + margin;
-            const y = top + room.y;
+    <script>
+        let LAYOUT = null;
+        let svg, svgGroup, tooltip;
+        let zoom;
+        let userTrails = {}; // id -> [{x,y}, ...]
+        let lastState = null;
+        let floorAPAlertCooldown = {};  // floor -> timestamp
+        let heatmapEnabled = false;
 
-            // Room base rect
-            svgGroup.append("rect")
-                .attr("class", "room-rect")
-                .attr("x", x)
-                .attr("y", y)
-                .attr("width", room.width)
-                .attr("height", room.height)
+        // 🔥 NEW: client-side throttling state
+        let latestSimState = null;
+        let redrawInProgress = false;
+        let lastRedrawTime = 0;
+        const MIN_REDRAW_INTERVAL = 33; // ms between redraws (≈6–7 FPS max)
+
+        // ============================================================
+        // DEBUG LOGGER
+        // ============================================================
+        const debugLog = {
+            container: null,
+            logs: [],
+            maxLogs: 50,
+
+            init() {
+                this.container = document.getElementById('debug-console');
+                this.info('Debug console initialized');
+            },
+
+            log(message, type = 'debug-info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = { message: `[${timestamp}] ${message}`, type };
+
+                this.logs.push(logEntry);
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.shift();
+                }
+
+                this.render();
+                console.log(message); // Also log to browser console
+            },
+
+            error(message) { this.log(`❌ ${message}`, 'debug-error'); },
+            warn(message) { this.log(`⚠️ ${message}`, 'debug-warn'); },
+            success(message) { this.log(`✅ ${message}`, 'debug-success'); },
+            info(message) { this.log(`ℹ️ ${message}`, 'debug-info'); },
+
+            render() {
+                if (!this.container) return;
+                this.container.innerHTML = this.logs
+                    .map(log => `<div class="debug-entry ${log.type}">${log.message}</div>`)
+                    .join('');
+                this.container.scrollTop = this.container.scrollHeight;
+            }
+        };
+
+        const updatesPanel = {
+            panel: null,
+            content: null,
+
+            init() {
+                this.panel = document.getElementById("updates-panel");
+                this.content = document.getElementById("updates-content");
+            },
+
+            add(message, type = "new") {
+                if (!this.panel) return;
+
+                this.panel.classList.remove("hidden");
+
+                const div = document.createElement("div");
+                div.className = `update-card ${type}`;
+                div.innerHTML = message;
+
+                this.content.prepend(div);
+
+                // limit to last 12 updates
+                while (this.content.children.length > 12) {
+                    this.content.lastChild.remove();
+                }
+            }
+        };
+
+
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            WS_URL: 'ws://127.0.0.1:8000/ws',
+            API_URL: 'http://127.0.0.1:8000',
+            RECONNECT_DELAY: 3000,
+            HEARTBEAT_INTERVAL: 30000,
+        };
+
+        let ws = null;
+        let reconnectTimer = null;
+        let heartbeatTimer = null;
+        let lastDataReceived = 0;
+
+        const MAX_TRAIL_POINTS = 1;
+        const AP_RANGE_DEFAULT = 100;
+
+        // floor level -> yTop in SVG coords
+        const floorYByLevel = {};
+
+        // -------------------- Backend Calls --------------------
+        async function loadLayout() {
+            try {
+                const resp = await fetch("./data/campus_layout.json");
+
+                if (!resp.ok) {
+                    console.error("❌ Failed to load campus_layout.json. HTTP status =", resp.status);
+                    throw new Error("Failed to load campus_layout.json");
+                }
+
+                LAYOUT = await resp.json();
+                console.log("✅ Layout loaded:", LAYOUT);
+            } catch (err) {
+                console.error("🔥 Error in loadLayout():", err);
+                throw err;
+            }
+        }
+
+        // IMPORTANT: backend is on :8000, frontend likely on :5500 (Live Server)
+        function addUser(level) {
+            fetch(`http://127.0.0.1:8000/floor/${level}/add_user`, { method: "POST" });
+        }
+
+        function removeUser(level) {
+            fetch(`http://127.0.0.1:8000/floor/${level}/remove_user`, { method: "POST" });
+        }
+
+        function showAlarm(message) {
+            const box = document.createElement("div");
+            box.style.cssText = `
+            background: rgba(248, 113, 113, 0.95);
+            color: white;
+            font-size: 13px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            animation: fadeSlide 0.4s ease-out;
+        `;
+            box.textContent = "🚨 " + message;
+
+            document.getElementById("alarm-container").appendChild(box);
+
+            setTimeout(() => box.remove(), 4000);
+        }
+
+        // -------------------- SVG Init --------------------
+        function initSVG() {
+            const { width, floorHeight, margin } = LAYOUT.canvas;
+            const totalHeight = LAYOUT.floors.length * (floorHeight + margin) + margin;
+
+            svg = d3.select("#canvas")
+                .append("svg")
+                .attr("viewBox", `0 0 ${width + 40} ${totalHeight}`)
+                .attr("preserveAspectRatio", "xMidYMin meet")
+                .classed("w-full", true);
+
+            svgGroup = svg.append("g");
+            tooltip = d3.select("#tooltip");
+
+            const defs = svg.append("defs");
+            const radial = defs.append("radialGradient")
+                .attr("id", "apRangeGradient")
+                .attr("cx", "50%")
+                .attr("cy", "50%")
+                .attr("r", "50%");
+            radial.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#22c55e")
+                .attr("stop-opacity", 0.45);
+            radial.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#22c55e")
+                .attr("stop-opacity", 0);
+
+            zoom = d3.zoom()
+                .scaleExtent([0.4, 3])
+                .on("zoom", (event) => svgGroup.attr("transform", event.transform));
+
+            svg.call(zoom);
+        }
+
+        function getRoomAccentColor(name) {
+            const n = name.toLowerCase();
+            if (n.includes("library")) return "#38bdf8";
+            if (n.includes("lab")) return "#a855f7";
+            if (n.includes("canteen")) return "#fb923c";
+            if (n.includes("class")) return "#e5e7eb";
+            if (n.includes("success")) return "#22c55e";
+            return "#9ca3af";
+        }
+
+        function drawStaticLayout() {
+            const floorsSorted = [...LAYOUT.floors].sort((a, b) => b.level - a.level);
+            const { margin, floorHeight, width } = LAYOUT.canvas;
+
+            floorsSorted.forEach((floor, idx) => {
+                const top = margin + idx * (floorHeight + margin);
+                floorYByLevel[floor.level] = top;
+
+                svgGroup.append("rect")
+                    .attr("class", "floor-box")
+                    .attr("x", margin)
+                    .attr("y", top)
+                    .attr("width", width - margin * 2)
+                    .attr("height", floorHeight)
+                    .attr("fill", "rgba(15,23,42,0.96)")
+                    .attr("stroke", "rgba(148,163,184,0.35)")
+                    .attr("rx", 18);
+
+                svgGroup.append("rect")
+                    .attr("class", "floor-neon")
+                    .attr("x", margin + 4)
+                    .attr("y", top + 4)
+                    .attr("width", width - margin * 2 - 8)
+                    .attr("height", floorHeight - 8)
+                    .attr("rx", 20);
+
+                svgGroup.append("text")
+                    .attr("x", margin + 16)
+                    .attr("y", top + 26)
+                    .attr("fill", "#e5e7eb")
+                    .attr("font-size", 14)
+                    .attr("font-weight", "600")
+                    .text(`Level ${floor.level} — ${floor.name}`);
+
+                floor.rooms?.forEach(room => {
+                    const x = room.x + margin;
+                    const y = top + room.y;
+
+                    svgGroup.append("rect")
+                        .attr("class", "room-rect")
+                        .attr("x", x)
+                        .attr("y", y)
+                        .attr("width", room.width)
+                        .attr("height", room.height)
+                        .attr("opacity", 0.9);
+
+                    const accentColor = getRoomAccentColor(room.name);
+                    svgGroup.append("rect")
+                        .attr("x", x + 6)
+                        .attr("y", y + 6)
+                        .attr("width", 6)
+                        .attr("height", 22)
+                        .attr("fill", accentColor)
+                        .attr("opacity", 0.95);
+
+                    svgGroup.append("text")
+                        .attr("x", x + 18)
+                        .attr("y", y + 22)
+                        .attr("fill", "#e5e7eb")
+                        .attr("font-size", 12)
+                        .text(room.name);
+
+                    svgGroup.append("rect")
+                        .attr("class", "room-heat")
+                        .attr("data-floor", floor.level)
+                        .attr("data-room", room.name)
+                        .attr("x", x)
+                        .attr("y", y)
+                        .attr("width", room.width)
+                        .attr("height", room.height)
+                        .attr("fill", "#22c55e")
+                        .attr("opacity", 0);
+                });
+            });
+        }
+
+
+        function apColor(load) {
+            const t = (load || 0) / 100;
+            if (t < 0.4) return "#22c55e";
+            if (t < 0.7) return "#eab308";
+            return "#ef4444";
+        }
+
+        function densityColor(t) {
+            if (t <= 0.0) return "#22c55e";
+            if (t < 0.5) return "#4ade80";
+            if (t < 0.8) return "#eab308";
+            return "#ef4444";
+        }
+
+        function updateStatsPanel(aps, users) {
+            const stats = document.getElementById("stats-panel");
+            stats.classList.remove("hidden");
+
+            const totalUsers = users.length;
+            const totalAps = aps.length;
+            const overloaded = aps.filter(ap => (ap.user_count || 0) >= (ap.max_users || ap.max_clients || 30)).length;
+            const avgLoad = aps.length
+                ? (aps.reduce((sum, ap) => sum + (ap.load || 0), 0) / aps.length).toFixed(1)
+                : 0;
+
+            stats.innerHTML = `
+            <div class="text-[0.8rem] space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="font-semibold text-sm">Live Network Snapshot</div>
+                    <span class="text-[10px] text-slate-300">~0.2s refresh</span>
+                </div>
+
+                <div class="flex justify-between">
+                    <span>Total Users</span>
+                    <span class="text-cyan-300 font-semibold">${totalUsers}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Total APs</span>
+                    <span class="text-emerald-300 font-semibold">${totalAps}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>APs at / over threshold</span>
+                    <span class="text-red-400 font-semibold">${overloaded}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Average AP Load</span>
+                    <span class="text-yellow-300 font-semibold">${avgLoad}%</span>
+                </div>
+            </div>
+        `;
+        }
+
+        function scrollToFloor(level) {
+            const container = document.getElementById("canvas");
+            const y = floorYByLevel[level];
+            if (y === undefined) return;
+
+            const offset = Math.max(0, y - 40);
+            container.scrollTo({
+                top: offset,
+                behavior: "smooth"
+            });
+        }
+
+        function buildSidebar(aps, users) {
+            const sidebar = document.getElementById("sidebar");
+            sidebar.classList.remove("hidden");
+
+            const floorsSorted = [...LAYOUT.floors].sort((a, b) => b.level - a.level);
+
+            sidebar.innerHTML = `
+            <div class="mb-3 flex items-center justify-between">
+                <div class="text-sm font-semibold">Floors Overview</div>
+                <div class="text-[10px] text-slate-300">tap to jump / adjust users</div>
+            </div>
+        `;
+
+            floorsSorted.forEach(floor => {
+                const count = users.filter(u => u.floor === floor.level).length;
+                const floorAps = aps.filter(ap => ap.floor === floor.level);
+                const avgFloorLoad = floorAps.length
+                    ? (floorAps.reduce((s, a) => s + (a.load || 0), 0) / floorAps.length).toFixed(0)
+                    : 0;
+
+                let barColor = "#22c55e";
+                const t = avgFloorLoad / 100;
+                if (t >= 0.7) barColor = "#ef4444";
+                else if (t >= 0.4) barColor = "#eab308";
+
+                sidebar.innerHTML += `
+                <div
+                    class="floor-card w-full mb-2 text-left px-3 py-2 glass-soft border border-slate-500/60 cursor-pointer"
+                    data-floor="${floor.level}"
+                >
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-300">Level ${floor.level}</span>
+                                <span class="w-1 h-1 rounded-full bg-slate-400"></span>
+                                <span class="text-[11px] text-slate-200">${floor.name.substring(0, 18)}</span>
+                            </div>
+                            <div class="mt-1 text-[11px] text-slate-300">
+                                Users:
+                                <span class="text-cyan-300 font-semibold" id="count-${floor.level}">
+                                    ${count}
+                                </span>
+                            </div>
+                            <div class="mt-1 w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                <div style="width: ${avgFloorLoad}%; background: ${barColor};"
+                                    class="h-full rounded-full"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center gap-1 ml-2">
+                            <button onclick="addUser(${floor.level}); event.stopPropagation();"
+                                class="w-6 h-6 rounded-full bg-emerald-600 hover:bg-emerald-400 text-xs font-semibold flex items-center justify-center">
+                                +
+                            </button>
+
+                            <button onclick="removeUser(${floor.level}); event.stopPropagation();"
+                                class="w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-400 text-xs font-semibold flex items-center justify-center">
+                                −
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            });
+
+            sidebar.querySelectorAll("[data-floor]").forEach(card => {
+                card.addEventListener("click", () => {
+                    const level = parseInt(card.getAttribute("data-floor"), 10);
+                    scrollToFloor(level);
+                });
+            });
+        }
+
+        function applyHeatmap(users) {
+            const heatRects = d3.selectAll(".room-heat");
+            if (!heatmapEnabled) {
+                heatRects.attr("opacity", 0);
+                return;
+            }
+
+            const counts = {};
+            users.forEach(u => {
+                if (!u.floor || !u.room) return;
+                const key = `${u.floor}||${u.room}`;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            const values = Object.values(counts);
+            const maxCount = values.length ? Math.max(...values) : 1;
+
+            heatRects.each(function () {
+                const rect = d3.select(this);
+                const floor = rect.attr("data-floor");
+                const room = rect.attr("data-room");
+                const key = `${floor}||${room}`;
+                const c = counts[key] || 0;
+                const t = maxCount ? c / maxCount : 0;
+
+                if (c === 0) {
+                    rect.attr("opacity", 0);
+                } else {
+                    rect
+                        .attr("fill", densityColor(t))
+                        .attr("opacity", 0.18 + t * 0.35);
+                }
+            });
+        }
+
+        // -------------------- REDRAW (main visualization) --------------------
+        function redrawState(state) {
+            lastState = state;
+
+            const aps = state.aps;
+            const users = state.clients || [];
+
+            // Compute global AP coordinates
+            aps.forEach(ap => {
+                const floorTop = floorYByLevel[ap.floor];
+                const margin = LAYOUT.canvas.margin;
+
+                ap._gx = ap.x + margin;
+                ap._gy = floorTop + ap.y;
+            });
+
+            // Compute global USER coordinates
+            users.forEach(u => {
+                const floorTop = floorYByLevel[u.floor];
+                const margin = LAYOUT.canvas.margin;
+
+                u._gx = u.x + margin;
+                u._gy = floorTop + u.y;
+            });
+
+            aps.forEach(ap => ap.client_count = 0);
+            users.forEach(u => {
+                if (u.assigned_ap) {
+                    const ap = aps.find(a => a.id === u.assigned_ap);
+                    if (ap) ap.client_count++;
+                }
+            });
+
+            updateStatsPanel(aps, users);
+            buildSidebar(aps, users);
+
+            // -----------------------------------------------------------
+            // 🔥 FLOOR AP HIGH LOAD ALERT SYSTEM
+            // -----------------------------------------------------------
+            LAYOUT.floors.forEach(floor => {
+                const level = floor.level;
+
+                // All APs on this floor
+                const floorAps = aps.filter(ap => ap.floor === level);
+
+                if (!floorAps.length) return;
+
+                // Count APs above 80% load
+                const highLoadAps = floorAps.filter(ap => (ap.load || 0) >= 85);
+
+                if (highLoadAps.length >= 2) {
+                    const now = Date.now();
+
+                    // If we haven't shown alert recently → show it
+                    if (!floorAPAlertCooldown[level] || now - floorAPAlertCooldown[level] > 10000) {
+                        floorAPAlertCooldown[level] = now;
+
+                        const msg = `⚠️ New AP is required on Floor ${level}`;
+                        updatesPanel.add(msg, "warn");
+                        showAlarm(msg);
+                        debugLog.warn(msg);
+                    }
+                }
+            });
+
+
+            svgGroup.selectAll(".ap-node").remove();
+            svgGroup.selectAll(".user-line-nearest").remove();
+            svgGroup.selectAll(".user-line-assigned").remove();
+            svgGroup.selectAll(".user-trail").remove();
+
+            // ---- APs ----
+            const apGroup = svgGroup.selectAll(".ap-node")
+                .data(aps)
+                .enter()
+                .append("g")
+                .attr("class", "ap-node")
+                .each(function (d) {
+                    const global = { x: d._gx, y: d._gy };
+                    d._gx = global.x;
+                    d._gy = global.y;
+                })
+                .attr("transform", d => `translate(${d._gx},${d._gy})`);
+
+            apGroup.append("circle")
+                .attr("class", "ap-range")
+                .attr("r", d => d.coverage_radius || AP_RANGE_DEFAULT)
+                .attr("fill", "url(#apRangeGradient)")
+                .attr("opacity", 0.22);
+
+            const arcGenerator = d3.arc()
+                .innerRadius(22)
+                .outerRadius(26)
+                .startAngle(0);
+
+            apGroup.append("path")
+                .attr("d", d =>
+                    arcGenerator.endAngle(
+                        (Math.max(0, Math.min(d.load || 0, 100)) / 100) * 2 * Math.PI
+                    )()
+                )
+                .attr("fill", d => apColor(d.load))
                 .attr("opacity", 0.9);
 
-            // Subtle accent bar
-            const accentColor = getRoomAccentColor(room.name);
-            svgGroup.append("rect")
-                .attr("x", x + 6)
-                .attr("y", y + 6)
-                .attr("width", 6)
-                .attr("height", 22)
-                .attr("fill", accentColor)
-                .attr("opacity", 0.95);
+            apGroup.append("circle")
+            .attr("r", d => 10 + (d.load / 100) * 14)
+            .attr("fill", d => apColor(d.load))
+            .attr("class", d => d.load > 80 ? "ap-glow" : "")
+            .on("mouseover", (event, d) => {
+                const maxUsers   = d.max_users || d.max_clients || 30;
+                const band =
+                    (typeof d.band === "string" && d.band.length > 0)
+                        ? d.band
+                        : (typeof d.band_support === "string" && d.band_support.length > 0
+                            ? d.band_support
+                            : "Unknown");
+                const load       = (typeof d.load === "number") ? d.load.toFixed(1) : (d.load || 0);
+                const rssiAvg =
+                    (typeof d.avg_RSSI === "number")
+                        ? `${d.avg_RSSI} dBm`
+                        : (typeof d.RSSI === "number" ? `${d.RSSI} dBm` : "N/A");
 
-            // Room label
-            svgGroup.append("text")
-                .attr("x", x + 18)
-                .attr("y", y + 22)
+                tooltip
+                    .style("opacity", 1)
+                    .html(
+                        `<b>${d.id}</b><br>
+                        Floor: ${d.floor}<br>
+                        Room: ${d.room}<br>
+                        Band: ${band}<br>
+                        Load: ${load}%<br>
+                        Connected users: ${d.client_count || 0}<br>`
+                    )
+                    .style("left", event.pageX + 10 + "px")
+                    .style("top", event.pageY - 20 + "px");
+            })
+            .on("mouseout", () => tooltip.style("opacity", 0));
+
+            apGroup.append("text")
+                .attr("y", -25)
+                .attr("text-anchor", "middle")
                 .attr("fill", "#e5e7eb")
-                .attr("font-size", 12)
-                .text(room.name);
+                .attr("font-size", 11)
+                .text(d => d.id);
 
-            // Heatmap overlay rect (starts invisible)
-            svgGroup.append("rect")
-                .attr("class", "room-heat")
-                .attr("data-floor", floor.level)
-                .attr("data-room", room.name)
-                .attr("x", x)
-                .attr("y", y)
-                .attr("width", room.width)
-                .attr("height", room.height)
-                .attr("fill", "#22c55e")
-                .attr("opacity", 0);
-        });
-    });
-}
-
-function toGlobal(floorLevel, room, lx, ly) {
-    const floorsSorted = [...LAYOUT.floors].sort((a, b) => b.level - a.level);
-    const index = floorsSorted.findIndex(f => f.level === floorLevel);
-    const top = LAYOUT.canvas.margin + index * (LAYOUT.canvas.floorHeight + LAYOUT.canvas.margin);
-    return { x: room.x + LAYOUT.canvas.margin + lx, y: top + room.y + ly };
-}
-
-function apColor(load) {
-    const t = (load || 0) / 100;
-    if (t < 0.4) return "#22c55e";   // green
-    if (t < 0.7) return "#eab308";   // yellow
-    return "#ef4444";                // red
-}
-
-function densityColor(t) {
-    // t in [0,1]
-    if (t <= 0.0) return "#22c55e";
-    if (t < 0.5) return "#4ade80";   // light green
-    if (t < 0.8) return "#eab308";   // yellow
-    return "#ef4444";                // red
-}
-
-function updateStatsPanel(aps, users) {
-    const stats = document.getElementById("stats-panel");
-    stats.classList.remove("hidden");
-
-    const totalUsers = users.length;
-    const totalAps = aps.length;
-    const overloaded = aps.filter(ap => ap.load > 80).length;
-    const avgLoad = aps.length
-        ? (aps.reduce((sum, ap) => sum + (ap.load || 0), 0) / aps.length).toFixed(1)
-        : 0;
-
-    stats.innerHTML = `
-        <div class="text-[0.8rem] space-y-2">
-            <div class="flex items-center justify-between">
-                <div class="font-semibold text-sm">Live Network Snapshot</div>
-                <span class="text-[10px] text-slate-300">~1s refresh</span>
-            </div>
-
-            <div class="flex justify-between">
-                <span>Total Users</span>
-                <span class="text-cyan-300 font-semibold">${totalUsers}</span>
-            </div>
-            <div class="flex justify-between">
-                <span>Total APs</span>
-                <span class="text-emerald-300 font-semibold">${totalAps}</span>
-            </div>
-            <div class="flex justify-between">
-                <span>Overloaded APs (&gt;80%)</span>
-                <span class="text-red-400 font-semibold">${overloaded}</span>
-            </div>
-            <div class="flex justify-between">
-                <span>Average AP Load</span>
-                <span class="text-yellow-300 font-semibold">${avgLoad}%</span>
-            </div>
-        </div>
-    `;
-}
-
-function scrollToFloor(level) {
-    const container = document.getElementById("canvas");
-    const y = floorYByLevel[level];
-    if (y === undefined) return;
-
-    const offset = Math.max(0, y - 40); // small margin above
-    container.scrollTo({
-        top: offset,
-        behavior: "smooth"
-    });
-}
-
-function buildSidebar(aps, users) {
-    const sidebar = document.getElementById("sidebar");
-    sidebar.classList.remove("hidden");
-    sidebar.innerHTML = `
-        <div class="mb-3 flex items-center justify-between">
-            <div class="text-sm font-semibold">Floors Overview</div>
-            <div class="text-[10px] text-slate-300">tap to jump</div>
-        </div>
-    `;
-
-    const floorsSorted = [...LAYOUT.floors].sort((a, b) => b.level - a.level);
-
-    floorsSorted.forEach(floor => {
-        const count = users.filter(u => u.floor === floor.level).length;
-        const floorAps = aps.filter(ap => ap.floor === floor.level);
-        const avgFloorLoad = floorAps.length
-            ? (floorAps.reduce((s,a)=>s+(a.load||0),0)/floorAps.length).toFixed(0)
-            : 0;
-
-        let barColor = "#22c55e";
-        const t = avgFloorLoad / 100;
-        if (t >= 0.7) barColor = "#ef4444";
-        else if (t >= 0.4) barColor = "#eab308";
-
-        sidebar.innerHTML += `
-            <button
-                class="floor-card w-full mb-2 text-left px-3 py-2 glass-soft border border-slate-500/60 flex items-center justify-between"
-                data-floor="${floor.level}"
-            >
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-300">Level ${floor.level}</span>
-                        <span class="w-1 h-1 rounded-full bg-slate-400"></span>
-                        <span class="text-[11px] text-slate-200">${floor.name}</span>
-                    </div>
-                    <div class="mt-1 text-[11px] text-slate-300">
-                        Users: <span class="text-cyan-300 font-semibold">${count}</span>
-                    </div>
-                    <div class="mt-1 w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                        <div style="width: ${avgFloorLoad}%; background: ${barColor};"
-                             class="h-full rounded-full"></div>
-                    </div>
-                </div>
-                <div class="ml-2 text-slate-300 text-xs flex flex-col items-end gap-1">
-                    <span>${avgFloorLoad}%</span>
-                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-900/70 border border-slate-500/70 text-[10px]">
-                        ⤵
-                    </span>
-                </div>
-            </button>
-        `;
-    });
-
-    // Attach click handlers for scroll
-    sidebar.querySelectorAll("[data-floor]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const level = parseInt(btn.getAttribute("data-floor"), 10);
-            scrollToFloor(level);
-        });
-    });
-}
-
-function applyHeatmap(users) {
-    const heatRects = d3.selectAll(".room-heat");
-    if (!heatmapEnabled) {
-        heatRects.attr("opacity", 0);
-        return;
-    }
-
-    // Count users per (floor, room)
-    const counts = {};
-    users.forEach(u => {
-        if (!u.floor || !u.room) return;
-        const key = `${u.floor}||${u.room}`;
-        counts[key] = (counts[key] || 0) + 1;
-    });
-
-    const values = Object.values(counts);
-    const maxCount = values.length ? Math.max(...values) : 1;
-
-    heatRects.each(function() {
-        const rect = d3.select(this);
-        const floor = rect.attr("data-floor");
-        const room = rect.attr("data-room");
-        const key = `${floor}||${room}`;
-        const c = counts[key] || 0;
-        const t = maxCount ? c / maxCount : 0;
-
-        if (c === 0) {
-            rect.attr("opacity", 0);
-        } else {
-            rect
-                .attr("fill", densityColor(t))
-                .attr("opacity", 0.18 + t * 0.35);
-        }
-    });
-}
-
-function redrawState(state) {
-    lastState = state;
-
-    const aps = state.aps;
-    const users = state.clients;
-
-    updateStatsPanel(aps, users);
-    buildSidebar(aps, users);
-
-    // Clear dynamic layers
-    svgGroup.selectAll(".ap-node").remove();
-    svgGroup.selectAll(".user-node").remove();
-    svgGroup.selectAll(".user-line").remove();
-    svgGroup.selectAll(".user-trail").remove();
-
-    // ---- APs ----
-    const apGroup = svgGroup.selectAll(".ap-node")
-        .data(aps)
-        .enter()
-        .append("g")
-        .attr("class", "ap-node")
-        .each(function(d) {
-            const floor = LAYOUT.floors.find(f => f.level === d.floor);
-            if (!floor) return;
-            const room = floor.rooms.find(r => r.name.toLowerCase() === d.room.toLowerCase());
-            if (!room) return;
-            const pos = toGlobal(d.floor, room, room.width / 2, room.height / 2);
-            d._gx = pos.x;
-            d._gy = pos.y;
-        })
-        .attr("transform", d => `translate(${d._gx},${d._gy})`);
-
-    // AP coverage range
-    apGroup.append("circle")
-        .attr("class", "ap-range")
-        .attr("r", d => d.coverage_radius || AP_RANGE_DEFAULT)
-        .attr("fill", "url(#apRangeGradient)")
-        .attr("opacity", 0.22);
-
-    // AP load gauge arc
-    const arcGenerator = d3.arc()
-        .innerRadius(22)
-        .outerRadius(26)
-        .startAngle(0);
-
-    apGroup.append("path")
-        .attr("d", d =>
-            arcGenerator.endAngle(
-                (Math.max(0, Math.min(d.load || 0, 100)) / 100) * 2 * Math.PI
-            )()
-        )
-        .attr("fill", d => apColor(d.load))
-        .attr("opacity", 0.9);
-
-    // AP core
-    apGroup.append("circle")
-        .attr("r", d => 10 + (d.load / 100) * 14)
-        .attr("fill", d => apColor(d.load))
-        .attr("class", d => d.load > 80 ? "ap-glow" : "")
-        .on("mouseover", (event, d) => {
-            tooltip
-                .style("opacity", 1)
-                .html(
-                    `<b>${d.id}</b><br>
-                    Floor: ${d.floor}<br>
-                    Room: ${d.room}<br>
-                    Load: ${d.load}%<br>
-                    Clients: ${d.client_count}`
-                )
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 20 + "px");
-        })
-        .on("mouseout", () => tooltip.style("opacity", 0));
-
-    apGroup.append("text")
-        .attr("y", -25)
-        .attr("text-anchor", "middle")
-        .attr("fill", "#e5e7eb")
-        .attr("font-size", 11)
-        .text(d => d.id);
-
-    // ---- Users & trails ----
-    users.forEach(u => {
-        if (!userTrails[u.id]) userTrails[u.id] = [];
-    });
-
-    const positionedUsers = users.map(d => {
-        const floor = LAYOUT.floors.find(f => f.level === d.floor);
-        if (!floor) return d;
-        const room = floor.rooms.find(r => r.name.toLowerCase() === d.room.toLowerCase());
-        if (!room) return d;
-        const pos = toGlobal(d.floor, room, d.x % room.width, d.y % room.height);
-        d._gx = pos.x;
-        d._gy = pos.y;
-
-        const trail = userTrails[d.id] || [];
-        trail.push({ x: d._gx, y: d._gy });
-        if (trail.length > MAX_TRAIL_POINTS) trail.shift();
-        userTrails[d.id] = trail;
-
-        return d;
-    });
-
-    const trailData = [];
-    Object.entries(userTrails).forEach(([id, points]) => {
-        points.forEach((p, idx) => {
-            trailData.push({
-                id,
-                x: p.x,
-                y: p.y,
-                age: idx,
-                len: points.length
+            // ---- Users & trails ----
+            users.forEach(u => {
+                if (!userTrails[u.id]) userTrails[u.id] = [];
             });
+
+            // Track previous AP assignment for each user
+            users.forEach(u => {
+                if (!u._lastAssigned) {
+                    u._lastAssigned = u.assigned_ap; // initialize
+                }
+            });
+
+            const positionedUsers = users.map(d => {
+                const global = { x: d._gx, y: d._gy };
+                d._gx = global.x;
+                d._gy = global.y;
+
+                const trail = userTrails[d.id] || [];
+                trail.push({ x: d._gx, y: d._gy });
+                if (trail.length > MAX_TRAIL_POINTS) trail.shift();
+                userTrails[d.id] = trail;
+
+                return d;
+            });
+
+            // Detect AP changes → store previous AP for white dotted line
+            positionedUsers.forEach(u => {
+                if (!u._lastAssigned) {
+                    u._lastAssigned = u.assigned_ap;
+                }
+
+                // FORCE the dotted line even if AP did not change
+                u.previous_ap = u._lastAssigned;
+                u._lastAssigned = u.assigned_ap;
+            });
+
+            const trailData = [];
+            Object.entries(userTrails).forEach(([id, points]) => {
+                points.forEach((p, idx) => {
+                    trailData.push({
+                        id,
+                        x: p.x,
+                        y: p.y,
+                        age: idx,
+                        len: points.length
+                    });
+                });
+            });
+
+            svgGroup.selectAll(".user-trail")
+                .data(trailData)
+                .enter()
+                .append("circle")
+                .attr("class", "user-trail")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", d => 2 + (d.age / d.len) * 2)
+                .attr("fill", d => d.id === "AP-KILLER" ? "#ff0000" : "#22d3ee")
+                .attr("opacity", d => 0.12 + (d.age / d.len) * 0.28);
+
+            const userSel = svgGroup.selectAll(".user-node")
+                .data(positionedUsers, d => d.id);
+
+            userSel.join(
+                enter => enter.append("circle")
+                    .attr("class", d =>
+                        d.id === "AP-KILLER"
+                            ? "user user-node apkiller"
+                            : "user user-node"
+                    )
+                    .attr("r", d => d.id === "AP-KILLER" ? 6 : 4)
+                    .attr("fill", d => d.id === "AP-KILLER" ? "#ff4444" : "#22d3ee")
+                    .attr("cx", d => d._gx)
+                    .attr("cy", d => d._gy)
+                    .on("mouseover", (event, d) => {
+                        const rssi = (typeof d.RSSI !== "undefined") ? `${d.RSSI} dBm` : "N/A";
+                        const userLoad = (typeof d.load === "number") ? `${d.load.toFixed(1)}%` : "N/A";
+
+                        tooltip
+                            .style("opacity", 1)
+                            .html(
+                                `<b>${d.id}</b><br>
+                                Floor: ${d.floor}<br>
+                                Room: ${d.room}<br>
+                                Assigned AP: ${d.assigned_ap || "—"}<br>
+                                Nearest AP: ${d.nearest_ap || "—"}<br>
+                                RSSI: ${rssi}<br>
+                                User load: ${userLoad}`
+                            )
+                            .style("left", event.pageX + 10 + "px")
+                            .style("top", event.pageY - 20 + "px");
+                    })
+                    .on("mouseout", () => tooltip.style("opacity", 0)),
+
+
+                update => update
+                    .transition()
+                    .duration(220)
+                    .ease(d3.easeLinear)
+                    .attr("cx", d => d._gx)
+                    .attr("cy", d => d._gy),
+
+                exit => exit.remove()
+            );
+
+
+            svgGroup.selectAll(".user-line-nearest")
+                .data(positionedUsers.filter(u => u.nearest_ap))
+                .enter()
+                .append("line")
+                .attr("class", "user-line-nearest")
+                .attr("stroke", "#475569")
+                .attr("stroke-width", 0.8)
+                .attr("stroke-dasharray", "3 3")
+                .attr("opacity", 0.8)
+                .attr("x1", d => d._gx)
+                .attr("y1", d => d._gy)
+                .attr("x2", d => {
+                    const ap = aps.find(a => a.id === d.nearest_ap);
+                    return ap ? ap._gx : d._gx;
+                })
+                .attr("y2", d => {
+                    const ap = aps.find(a => a.id === d.nearest_ap);
+                    return ap ? ap._gy : d._gy;
+                });
+            
+            svgGroup.selectAll(".user-line-prev").remove();
+
+            svgGroup.selectAll(".user-line-prev")
+                .data(positionedUsers.filter(u => u.previous_ap))
+                .enter()
+                .append("line")
+                .attr("class", "user-line-prev")
+                .attr("stroke", "#ffffff")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "4 4")
+                .attr("opacity", 0.25)
+                .attr("x1", d => d._gx)
+                .attr("y1", d => d._gy)
+                .attr("x2", d => {
+                    const ap = aps.find(a => a.id === d.previous_ap);
+                    return ap ? ap._gx : d._gx;
+                })
+                .attr("y2", d => {
+                    const ap = aps.find(a => a.id === d.previous_ap);
+                    return ap ? ap._gy : d._gy;
+                });    
+
+            svgGroup.selectAll(".user-line-assigned")
+                .data(positionedUsers.filter(u => u.assigned_ap))
+                .enter()
+                .append("line")
+                .attr("class", "user-line-assigned")
+                .attr("stroke", "#38bdf8")
+                .attr("stroke-width", 1.2)
+                .attr("opacity", 0.45)
+                .attr("x1", d => d._gx)
+                .attr("y1", d => d._gy)
+                .attr("x2", d => {
+                    const ap = aps.find(a => a.id === d.assigned_ap);
+                    return ap ? ap._gx : d._gx;
+                })
+                .attr("y2", d => {
+                    const ap = aps.find(a => a.id === d.assigned_ap);
+                    return ap ? ap._gy : d._gy;
+                });
+
+            // 🔥 AP-KILLER RED LINE INSERTED HERE
+            const killer = positionedUsers.find(u => u.id === "AP-KILLER");
+
+            if (killer) {
+                let nearestAP = null;
+                let bestDist = Infinity;
+
+                aps.forEach(ap => {
+                    if (ap.floor === killer.floor) {
+                        const dist = Math.hypot(killer._gx - ap._gx, killer._gy - ap._gy);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            nearestAP = ap;
+                        }
+                    }
+                });
+
+                const killerLine = svgGroup.selectAll(".apkiller-line")
+                    .data(nearestAP ? [ { killer, nearestAP } ] : []);
+
+                killerLine.join(
+                    enter => enter.append("line")
+                        .attr("class", "apkiller-line")
+                        .attr("stroke", "red")
+                        .attr("stroke-width", 2)
+                        .attr("stroke-dasharray", "6 4")
+                        .attr("opacity", 0.9)
+                        .attr("x1", d => d.killer._gx)
+                        .attr("y1", d => d.killer._gy)
+                        .attr("x2", d => d.nearestAP._gx)
+                        .attr("y2", d => d.nearestAP._gy),
+
+                    update => update
+                        .attr("x1", d => d.killer._gx)
+                        .attr("y1", d => d.killer._gy)
+                        .attr("x2", d => d.nearestAP._gx)
+                        .attr("y2", d => d.nearestAP._gy),
+
+                    exit => exit.remove()
+                );
+            }
+
+
+            applyHeatmap(users);
+
+        }
+
+        function toggleHeatmap() {
+            heatmapEnabled = !heatmapEnabled;
+
+            const stateSpan = document.getElementById("heatmap-state");
+            stateSpan.textContent = heatmapEnabled ? "ON" : "OFF";
+            stateSpan.className = heatmapEnabled
+                ? "text-emerald-400 font-semibold"
+                : "text-slate-400 font-semibold";
+
+            updatesPanel.add(
+                heatmapEnabled ? "🔥 Heatmap enabled" : "🧊 Heatmap disabled",
+                heatmapEnabled ? "new" : "warn"
+            );
+
+            if (lastState) {
+                applyHeatmap(lastState.clients || []);
+            }
+        }
+
+
+        // ============================================================
+        // 🔥 NEW: SCHEDULED REDRAW (Option A)
+        // ============================================================
+        function requestRedraw() {
+            if (!latestSimState) return;
+
+            const now = performance.now();
+            if (redrawInProgress) {
+                // already drawing this frame, just keep latestSimState updated
+                return;
+            }
+            if (now - lastRedrawTime < MIN_REDRAW_INTERVAL) {
+                // too soon since last draw, skip this one but keep state
+                return;
+            }
+
+            redrawInProgress = true;
+            requestAnimationFrame(() => {
+                try {
+                    redrawState(latestSimState);
+                    lastRedrawTime = performance.now();
+                } catch (e) {
+                    console.error("🔥 redrawState error:", e);
+                    debugLog.error("redrawState crashed, see console");
+                } finally {
+                    redrawInProgress = false;
+                }
+            });
+        }
+
+        // ============================================================
+        // WEBSOCKET CONNECTION (ROBUST)
+        // ============================================================
+        function connectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            debugLog.info(`Connecting to ${CONFIG.WS_URL}...`);
+            updateWSStatus('connecting');
+
+            try {
+                ws = new WebSocket(CONFIG.WS_URL);
+
+                ws.onopen = () => {
+                    debugLog.success('WebSocket connected!');
+                    updateWSStatus('connected');
+                    lastDataReceived = Date.now();
+                    startHeartbeat();
+                };
+
+                ws.onmessage = (event) => {
+                    lastDataReceived = Date.now();
+
+                    let data;
+                    try {
+                        data = JSON.parse(event.data);
+                    } catch (error) {
+                        debugLog.error(`Failed to parse message: ${error.message}`);
+                        return;
+                    }
+
+                    // unwrap {type:"state", data:{...}}
+                    const payload = data?.data || data;
+
+                    // alarms
+                    if (payload.alarms && payload.alarms.length > 0) {
+                        payload.alarms.forEach(a => {
+                            updatesPanel.add(`⚠️ ${a.msg}`, "warn");
+                            showAlarm(a.msg);
+                        });
+                    }
+
+                    // valid sim state?
+                    if (payload.aps && payload.clients) {
+                        latestSimState = payload;
+                        requestRedraw();
+                    } else {
+                        debugLog.warn("WS packet did not include aps/clients");
+                    }
+                };
+
+
+                ws.onerror = (error) => {
+                    debugLog.error('WebSocket error');
+                    console.error(error);
+                };
+
+                ws.onclose = () => {
+                    debugLog.warn('WebSocket disconnected');
+                    updateWSStatus('disconnected');
+                    stopHeartbeat();
+                    scheduleReconnect();
+                };
+
+            } catch (error) {
+                debugLog.error(`WebSocket connection failed: ${error.message}`);
+                scheduleReconnect();
+            }
+        }
+
+        function updateWSStatus(status) {
+            const statusEl = document.getElementById('ws-status');
+            const dot = statusEl.querySelector('.status-dot');
+            const text = statusEl.querySelector('span:last-child');
+
+            if (status === 'connected') {
+                dot.className = 'status-dot status-online';
+                text.textContent = 'Connected';
+            } else if (status === 'connecting') {
+                dot.className = 'status-dot status-connecting';
+                text.textContent = 'Connecting...';
+            } else {
+                dot.className = 'status-dot status-offline';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+
+            debugLog.info(`Reconnecting in ${CONFIG.RECONNECT_DELAY / 1000}s...`);
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connectWebSocket();
+            }, CONFIG.RECONNECT_DELAY);
+        }
+
+        function startHeartbeat() {
+            stopHeartbeat();
+            heartbeatTimer = setInterval(() => {
+                const timeSinceData = Date.now() - lastDataReceived;
+                if (timeSinceData > 10000) {
+                    // could log if needed
+                }
+            }, CONFIG.HEARTBEAT_INTERVAL);
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+                heartbeatTimer = null;
+            }
+        }
+
+        function reconnectWebSocket() {
+            debugLog.info('Manual reconnect requested');
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            connectWebSocket();
+        }
+
+        // ============================================================
+        // BACKEND TEST
+        // ============================================================
+        async function testBackend() {
+            debugLog.info('🔍 Testing backend connection...');
+
+            try {
+                debugLog.info('Testing /status endpoint...');
+                try {
+                    const statusResp = await fetch(`${CONFIG.API_URL}/status`);
+                    if (statusResp.ok) {
+                        const status = await statusResp.json();
+                        debugLog.success(`Backend status: ${JSON.stringify(status)}`);
+                    } else {
+                        debugLog.warn(`Status check returned ${statusResp.status} (might not exist)`);
+                    }
+                } catch (e) {
+                    debugLog.warn(`Status check failed: ${e.message}`);
+                }
+
+                debugLog.info('Testing /state endpoint...');
+                const stateResp = await fetch(`${CONFIG.API_URL}/state`);
+
+                if (!stateResp.ok) {
+                    debugLog.error(`State check failed: HTTP ${stateResp.status}`);
+                    return;
+                }
+
+                const state = await stateResp.json();
+                debugLog.success(`Got state: ${state.aps?.length || 0} APs, ${state.clients?.length || 0} users`);
+
+                if (state.aps) {
+                    debugLog.info('Updating visualization with REST data...');
+                    latestSimState = state;
+                    requestRedraw();
+                }
+
+            } catch (error) {
+                debugLog.error(`Backend test failed: ${error.message}`);
+                debugLog.error('Is backend running on port 8000?');
+            }
+        }
+
+
+
+        function zoomIn() {
+            svg.transition().call(zoom.scaleBy, 1.2);
+        }
+
+        function zoomOut() {
+            svg.transition().call(zoom.scaleBy, 0.8);
+        }
+        
+        let apkFloor = 1;
+
+        function deployAPKiller() {
+            fetch(`${CONFIG.API_URL}/apkiller/deploy`, { method: "POST" });
+        }
+
+        function withdrawAPKiller() {
+            fetch(`${CONFIG.API_URL}/apkiller/withdraw`, { method: "POST" });
+        }
+
+        function apkFloorUp() {
+            apkFloor = Math.min(7, apkFloor + 1);
+            document.getElementById("apk-floor").innerText = apkFloor;
+            fetch(`${CONFIG.API_URL}/apkiller/floor/${apkFloor}`, { method: "POST" });
+        }
+
+        function apkFloorDown() {
+            apkFloor = Math.max(1, apkFloor - 1);
+            document.getElementById("apk-floor").innerText = apkFloor;
+            fetch(`${CONFIG.API_URL}/apkiller/floor/${apkFloor}`, { method: "POST" });
+        }   
+
+        // --- Band control buttons ---
+        document.querySelectorAll(".band-btn").forEach(btn => {
+            btn.onclick = async () => {
+                const band = btn.getAttribute("data-band");
+
+                debugLog.info(`Switching band to ${band}...`);
+
+                try {
+                    const resp = await fetch(`${CONFIG.API_URL}/setband`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ band }),
+                    });
+
+                    if (resp.ok) {
+                        debugLog.success(`Band set to ${band}`);
+                        updatesPanel.add(`📡 WiFi Band changed to <b>${band} GHz</b>`, "new");
+                    } else {
+                        debugLog.error("Backend rejected band change");
+                    }
+                } catch (err) {
+                    debugLog.error("Failed to send band update");
+                    console.error(err);
+                }
+            };
         });
-    });
 
-    svgGroup.selectAll(".user-trail")
-        .data(trailData)
-        .enter()
-        .append("circle")
-        .attr("class", "user-trail")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", d => 2 + (d.age / d.len) * 2)
-        .attr("fill", "#22d3ee")
-        .attr("opacity", d => 0.12 + (d.age / d.len) * 0.28);
 
-    svgGroup.selectAll(".user-node")
-        .data(positionedUsers)
-        .enter()
-        .append("circle")
-        .attr("class", "user user-node")
-        .attr("r", 4)
-        .attr("cx", d => d._gx)
-        .attr("cy", d => d._gy)
-        .on("mouseover", (event, d) => {
-            tooltip
-                .style("opacity", 1)
-                .html(
-                    `<b>${d.id}</b><br>
-                    Floor: ${d.floor}<br>
-                    Room: ${d.room}<br>
-                    AP: ${d.connected_ap || "—"}<br>
-                    RSSI: ${d.RSSI}`
-                )
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 20 + "px");
-        })
-        .on("mouseout", () => tooltip.style("opacity", 0));
+        let apkControls = { up: false, down: false, left: false, right: false };
 
-    // User ↔ AP lines
-    svgGroup.selectAll(".user-line")
-        .data(positionedUsers.filter(u => u.connected_ap))
-        .enter()
-        .append("line")
-        .attr("class", "user-line")
-        .attr("stroke", "#64748b")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.35)
-        .attr("x1", d => d._gx)
-        .attr("y1", d => d._gy)
-        .attr("x2", d => {
-            const ap = aps.find(a => a.id === d.connected_ap);
-            return ap ? ap._gx : d._gx;
-        })
-        .attr("y2", d => {
-            const ap = aps.find(a => a.id === d.connected_ap);
-            return ap ? ap._gy : d._gy;
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "w" || e.key === "ArrowUp") apkControls.up = true;
+            if (e.key === "s" || e.key === "ArrowDown") apkControls.down = true;
+            if (e.key === "a" || e.key === "ArrowLeft") apkControls.left = true;
+            if (e.key === "d" || e.key === "ArrowRight") apkControls.right = true;
         });
 
-    // Apply / update heatmap overlay on rooms
-    applyHeatmap(users);
-}
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "w" || e.key === "ArrowUp") apkControls.up = false;
+            if (e.key === "s" || e.key === "ArrowDown") apkControls.down = false;
+            if (e.key === "a" || e.key === "ArrowLeft") apkControls.left = false;
+            if (e.key === "d" || e.key === "ArrowRight") apkControls.right = false;
+        });
 
-function toggleHeatmap() {
-    heatmapEnabled = !heatmapEnabled;
-    const stateSpan = document.getElementById("heatmap-state");
-    stateSpan.textContent = heatmapEnabled ? "ON" : "OFF";
-    stateSpan.className = heatmapEnabled
-        ? "text-emerald-400 font-semibold"
-        : "text-slate-400 font-semibold";
+        // send velocity to backend every 80ms
+        setInterval(() => {
+            const vx = (apkControls.left ? -1 : 0) + (apkControls.right ? 1 : 0);
+            const vy = (apkControls.up ? -1 : 0) + (apkControls.down ? 1 : 0);
 
-    if (lastState) {
-        applyHeatmap(lastState.clients);
-    }
-}
+            fetch(`${CONFIG.API_URL}/apkiller/move`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vx, vy })
+            });
+        }, 80);
 
-function startWebSocket() {
-    const socket = new WebSocket("ws://127.0.0.1:8000/ws");
+        
+        (async function main() {
+            debugLog.init();
+            updatesPanel.init();
+            updatesPanel.add("🚀 Frontend initialized", "new");
+            debugLog.info("🚀 Frontend starting...");
 
-    socket.onmessage = (event) => redrawState(JSON.parse(event.data));
-    socket.onclose = () => setTimeout(startWebSocket, 1500);
-}
+            try {
+                await loadLayout();
+                debugLog.success("Layout loaded");
 
-function zoomIn() {
-    svg.transition().call(zoom.scaleBy, 1.2);
-}
+                initSVG();
+                debugLog.success("SVG initialized");
 
-function zoomOut() {
-    svg.transition().call(zoom.scaleBy, 0.8);
-}
+                drawStaticLayout();
+                debugLog.success("Campus drawn");
 
-(async function main() {
-    await loadLayout();
-    initSVG();
-    drawStaticLayout();
-    startWebSocket();
-})();
-</script>
+                connectWebSocket();
+            } catch (err) {
+                debugLog.error(`Fatal error in main(): ${err.message}`);
+                console.error("💥 Fatal error in main():", err);
+            }
+        })();
+
+    </script>
 
 </body>
+
 </html>

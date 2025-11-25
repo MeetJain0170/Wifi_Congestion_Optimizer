@@ -1,69 +1,72 @@
 import networkx as nx
-import math
-import json
-from .cost_function import compute_cost
+from algorithms.cost_function import compute_cost, dynamic_capacity
 
 
 class GraphModel:
+    """
+    Min-Cost Max-Flow Graph:
+
+        S → user nodes (capacity=1)
+        user → AP edges (capacity=1, weight=cost)
+        AP → T (capacity = dynamic airtime capacity)
+
+    Properties:
+      • No cross-floor edges
+      • Load-aware dynamic AP capacity
+      • Smaller graph → faster
+      • Fully stable with new cost model
+    """
 
     def __init__(self, users, aps):
         self.users = users
         self.aps = aps
-        self.graph = nx.DiGraph()
 
-    def build_flow_network(self):
-        """Build the bipartite flow network: S -> Users -> APs -> T"""
+    def build_graph(self):
+        G = nx.DiGraph()
 
-        G = self.graph
+        # Source & Sink
+        G.add_node("S")
+        G.add_node("T")
 
-        # Add special nodes
-        G.add_node("S")  # Source
-        G.add_node("T")  # Sink
-
-        # -------------------------
-        # Add User nodes and edges
-        # -------------------------
-        for user in self.users:
-            uid = user["id"]
-
-            # Edge: S -> User
+        # ---------------------------------------------------
+        # 1. S → Users
+        # ---------------------------------------------------
+        for u in self.users:
+            uid = u["id"]
             G.add_edge("S", uid, capacity=1, weight=0)
 
-            # Connect user to all APs
-            for ap in self.aps:
+        # ---------------------------------------------------
+        # 2. Users → APs (same floor only)
+        # ---------------------------------------------------
+        for u in self.users:
+            uid = u["id"]
+            user_floor = u.get("floor")
+
+            # APs only on the same floor (strict rule)
+            same_floor_aps = [
+                ap for ap in self.aps
+                if ap.get("floor") == user_floor
+            ]
+
+            for ap in same_floor_aps:
                 aid = ap["id"]
+                cost = compute_cost(u, ap)
 
-                # Compute cost using cost function
-                cost = compute_cost(user, ap)
-
-                # Add edge User -> AP
+                # Each assignment = 1 unit of flow
                 G.add_edge(uid, aid, capacity=1, weight=cost)
 
-        # -------------------------
-        # Add AP nodes and edges
-        # -------------------------
+        # ---------------------------------------------------
+        # 3. APs → T (dynamic capacity)
+        # ---------------------------------------------------
         for ap in self.aps:
             aid = ap["id"]
 
-            # AP → T edge based on airtime or client capacity
-            G.add_edge(aid, "T", capacity=ap["airtime_capacity"], weight=0)
+            # REAL CHANGE:
+            # Instead of max_clients (static)
+            # we use dynamic capacity that grows logarithmically
+            cap = dynamic_capacity(ap)
+
+            # Make sure we don't pass floats to networkx
+            G.add_edge(aid, "T", capacity=int(cap), weight=0)
 
         return G
-
-
-def load_json(filename):
-    with open(filename, "r") as f:
-        return json.load(f)
-
-
-if __name__ == "__main__":
-    # Test the graph model
-    users = load_json("WifiLoadBalancing/data/users.json")
-    aps = load_json("WifiLoadBalancing/data/aps.json")
-
-    gm = GraphModel(users, aps)
-    G = gm.build_flow_network()
-
-    print("Graph created with:")
-    print("Nodes:", len(G.nodes))
-    print("Edges:", len(G.edges))

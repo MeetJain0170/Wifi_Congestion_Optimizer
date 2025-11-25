@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-generate_initial_data.py — Realistic multi-floor campus generator
-Using distribution:
-• Floor 1  → 15%
-• Floors 2–5 → 60% total (15% each)
-• Floors 6–7 → 15% total (7.5% each)
+generate_initial_data.py — BAND-NEUTRAL USER SPAWNING EDITION
+
+✔ Users spawn ANYWHERE inside valid rooms (no coverage restrictions)
+✔ Band coverage is handled ONLY by simulator.py (band switching makes users disappear)
+✔ Balanced per-floor user distribution (using FLOOR_DENSITY)
+✔ No AP starts above its user-count capacity (max_clients)
+✔ No AP starts above safe airtime utilization
+✔ RSSI always valid (-95 to -40)
+✔ Perfect compatibility with simulator.py
 """
 
 import json
@@ -12,232 +16,290 @@ import random
 import math
 from pathlib import Path
 
-NUM_APS = 8
-NUM_USERS = 120
+# ---------------------------------------------------------
+# PATH CONFIG
+# ---------------------------------------------------------
+CURRENT = Path(__file__).resolve()
+SIM_DIR = CURRENT.parents[1]              # WifiLoadBalancing/src/simulation
+ROOT = SIM_DIR.parent                    # WifiLoadBalancing/
+OUT_DIR = ROOT / "data"
+LAYOUT_PATH = ROOT / "frontend" / "data" / "campus_layout.json"
+CONFIG_PATH = OUT_DIR / "config.json"
 
-OUT_DIR = Path(__file__).resolve().parents[2] / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-CHANNELS = [1, 6, 11]
+# ---------------------------------------------------------
+# LOAD CAMPUS LAYOUT
+# ---------------------------------------------------------
+with open(LAYOUT_PATH, "r") as f:
+    FLOORS = json.load(f)["floors"]
 
-# Floor distribution (%) → converted to weights
-FLOOR_DISTRIBUTION = {
-    1: 0.15,      # 15%
-    2: 0.15,      # 15%
-    3: 0.15,      # 15%
-    4: 0.15,      # 15%
-    5: 0.15,      # 15%
-    6: 0.075,     # 7.5%
-    7: 0.075      # 7.5%
+# ---------------------------------------------------------
+# GLOBAL SETTINGS
+# ---------------------------------------------------------
+TOTAL_USERS = 175
+
+CHANNELS_24 = [1, 6, 11]
+CHANNELS_5  = [36, 40, 44, 48]
+CHANNELS_6  = [5, 21, 37, 53, 69]
+
+CHANNELS_BY_BAND = {
+    "2.4": CHANNELS_24,
+    "5":   CHANNELS_5,
+    "6":   CHANNELS_6,
 }
 
-# Campus layout (same as before)
-CAMPUS_LAYOUT = {
-    "floors": [
-        { "level": 7, "name": "7th Floor - Library",
-          "rooms": [
-            {"name": "Library", "x": 40, "y": 30, "width": 820, "height": 180},
-            {"name": "Study Area", "x": 40, "y": 220, "width": 820, "height": 160}
-          ]},
-        { "level": 6, "name": "6th Floor - Staff",
-          "rooms": [
-            {"name":"Staff Room A","x":40,"y":30,"width":470,"height":350},
-            {"name":"Staff Room B","x":540,"y":30,"width":470,"height":350}
-          ]},
-        { "level": 5, "name": "5th Floor - Classrooms",
-          "rooms": [
-            {"name":"Class 501","x":40,"y":30,"width":300,"height":160},
-            {"name":"Class 502","x":360,"y":30,"width":300,"height":160},
-            {"name":"Class 503","x":680,"y":30,"width":300,"height":160},
-            {"name":"Class 504","x":40,"y":200,"width":300,"height":160},
-            {"name":"Class 505","x":360,"y":200,"width":300,"height":160},
-            {"name":"Class 506","x":680,"y":200,"width":300,"height":160}
-          ]},
-        { "level": 4, "name": "4th Floor - Classrooms + Success Centre",
-          "rooms": [
-            {"name":"Class 401","x":40,"y":30,"width":260,"height":160},
-            {"name":"Class 402","x":320,"y":30,"width":260,"height":160},
-            {"name":"Class 403","x":600,"y":30,"width":260,"height":160},
-            {"name":"Class 404","x":40,"y":210,"width":260,"height":160},
-            {"name":"Class 405","x":320,"y":210,"width":260,"height":160},
-            {"name":"Success Centre (Right)","x":600,"y":210,"width":260,"height":160}
-          ]},
-        { "level": 3, "name": "3rd Floor - Classrooms",
-          "rooms": [
-            {"name":"Class 301","x":40,"y":30,"width":300,"height":160},
-            {"name":"Class 302","x":360,"y":30,"width":300,"height":160},
-            {"name":"Class 303","x":680,"y":30,"width":300,"height":160},
-            {"name":"Class 304","x":40,"y":200,"width":300,"height":160},
-            {"name":"Class 305","x":360,"y":200,"width":300,"height":160},
-            {"name":"Class 306","x":680,"y":200,"width":300,"height":160}
-          ]},
-        { "level": 2, "name": "2nd Floor - Classrooms",
-          "rooms": [
-            {"name":"Class 201","x":40,"y":30,"width":300,"height":160},
-            {"name":"Class 202","x":360,"y":30,"width":300,"height":160},
-            {"name":"Class 203","x":680,"y":30,"width":300,"height":160},
-            {"name":"Class 204","x":40,"y":200,"width":300,"height":160},
-            {"name":"Class 205","x":360,"y":200,"width":300,"height":160},
-            {"name":"Class 206","x":680,"y":200,"width":300,"height":160}
-          ]},
-        { "level": 1, "name": "1st Floor - Labs & Canteen",
-          "rooms": [
-            {"name":"Lab A","x":40,"y":30,"width":420,"height":260},
-            {"name":"Lab B","x":480,"y":30,"width":420,"height":260},
-            {"name":"Canteen (Right)","x":920,"y":30,"width":240,"height":260},
-            {"name":"Corridor (center)","x":40,"y":310,"width":1120,"height":120}
-          ]}
-    ]
+# Coverage IS NOT USED IN GENERATOR ANYMORE
+# (Only simulator checks coverage during runtime)
+BAND_COVERAGE = {
+    "2.4": 600,
+    "5":   450,
+    "6":   250,
 }
 
-# Fixed AP placements
-FIXED_AP_PLAN = [
-    {"id":"AP_1", "floor":7, "room":"Library"},
-    {"id":"AP_2", "floor":6, "room":"Staff Room A"},
-    {"id":"AP_3", "floor":5, "room":"Class 501"},
-    {"id":"AP_4", "floor":5, "room":"Class 506"},
-    {"id":"AP_5", "floor":4, "room":"Success Centre (Right)"},
-    {"id":"AP_6", "floor":3, "room":"Class 302"},
-    {"id":"AP_7", "floor":2, "room":"Class 203"},
-    {"id":"AP_8", "floor":1, "room":"Lab A"}
-]
+BAND_PATHLOSS = {
+    "2.4": 20,
+    "5":   22,
+    "6":   24,
+}
 
+def load_config():
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                return json.load(f)
+        except:
+            print("⚠️ Failed to read config.json, using defaults")
+    return {}
 
-# -------------------------------
-# Helpers
-# -------------------------------
+CONFIG = load_config()
+DEFAULT_BAND = CONFIG.get("default_band", "5")
+if DEFAULT_BAND not in CHANNELS_BY_BAND:
+    print(f"⚠️ Invalid default_band '{DEFAULT_BAND}' in config.json, using '5'")
+    DEFAULT_BAND = "5"
+
+# Floor population distribution
+FLOOR_DENSITY = {
+    7: 0.18,
+    6: 0.17,
+    5: 0.16,
+    4: 0.16,
+    3: 0.14,
+    2: 0.10,
+    1: 0.09,
+}
+
+AIRTIME_UTILIZATION_SAFETY = 0.80
+AVG_AIRTIME_PER_USER = 3.0
+
+# ---------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------
 def find_floor(level):
-    return next((f for f in CAMPUS_LAYOUT["floors"] if f["level"] == level), None)
+    return next(f for f in FLOORS if f["level"] == level)
 
-def find_room_on_floor(floor_obj, room_name):
-    return next((r for r in floor_obj["rooms"] if r["name"].lower() == room_name.lower()), None)
-
-def place_point_in_room(room):
-    pad = 8
+def rand_point(room):
+    pad = 6
     return (
-        room["x"] + pad + random.random() * (room["width"] - pad*2),
-        room["y"] + pad + random.random() * (room["height"] - pad*2)
+        room["x"] + pad + random.random() * (room["width"] - 2 * pad),
+        room["y"] + pad + random.random() * (room["height"] - 2 * pad),
     )
 
-def calculate_rssi(distance):
-    if distance <= 0.5:
-        return -30
-    rssi = -30 - 20 * math.log10(distance)
-    return max(-95, min(-40, int(rssi)))
-
-def euclid(a, b):
+def dist(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
+def rssi_from_dist(d, band):
+    loss = BAND_PATHLOSS.get(band, 22)
+    if d <= 1:
+        return -40
+    r = -30 - loss * math.log10(max(d, 1e-3))
+    return max(-95, min(-40, int(r)))
 
-# -------------------------------
-# Generate Access Points
-# -------------------------------
-def generate_access_points():
+# AP interference model
+def compute_interference(ap, aps):
+    score = 0.0
+    for other in aps:
+        if other["id"] == ap["id"]:
+            continue
+        if other["band"] != ap["band"]:
+            continue
+        if other["channel"] == ap["channel"]:
+            score += 1.0
+        elif abs(other["channel"] - ap["channel"]) <= 5:
+            score += 0.5
+    return round(score, 2)
+
+# ---------------------------------------------------------
+# AP GENERATION
+# ---------------------------------------------------------
+def generate_aps():
     aps = []
-    for spec in FIXED_AP_PLAN:
 
-        floor_obj = find_floor(spec["floor"])
-        room = find_room_on_floor(floor_obj, spec["room"])
+    for floor in FLOORS:
+        level = floor["level"]
 
-        if room:
-            x, y = place_point_in_room(room)
-        else:
-            x, y = 200 + random.random() * 200, 200 + random.random() * 200
+        for apinfo in floor.get("aps", []):
+            ap_id = apinfo["id"]
+            x = apinfo["x"]
+            y = apinfo["y"]
 
-        coverage = int((room["width"] + room["height"]) / 4)
+            airtime_capacity = random.randint(90, 140)
+            safe_airtime = airtime_capacity * AIRTIME_UTILIZATION_SAFETY
+            derived_max_clients = int(safe_airtime / AVG_AIRTIME_PER_USER)
 
-        aps.append({
-            "id": spec["id"],
-            "floor": spec["floor"],
-            "room": spec["room"],
-            "x": round(x, 2),
-            "y": round(y, 2),
-            "channel": random.choice(CHANNELS),
-            "interference_score": round(random.uniform(0.05, 0.5), 2),
-            "airtime_capacity": random.randint(60, 140),
-            "max_clients": random.randint(20, 45),
-            "coverage_radius": coverage,
-            "client_count": 0,
-            "load": 0
-        })
+            max_clients = max(18, min(derived_max_clients, 30))
+
+            ap_band = DEFAULT_BAND
+
+            band_channels = CHANNELS_BY_BAND[ap_band]
+            channel = band_channels[len(aps) % len(band_channels)]
+
+            aps.append(
+                {
+                    "id": ap_id,
+                    "floor": level,
+                    "room": "Corridor",
+                    "x": x,
+                    "y": y,
+                    "band": ap_band,
+                    "channel": channel,
+                    "interference_score": 0.0,
+                    "airtime_capacity": airtime_capacity,
+                    "max_clients": max_clients,
+                    "coverage_radius": BAND_COVERAGE[ap_band],   # unused by generator
+                    "client_count": 0,
+                    "load": 0,
+                }
+            )
+
+    for ap in aps:
+        ap["interference_score"] = compute_interference(ap, aps)
 
     return aps
 
 
-# -------------------------------
-# Generate Users
-# -------------------------------
+# ---------------------------------------------------------
+# USER GENERATION (NO COVERAGE LIMITS)
+# ---------------------------------------------------------
+def compute_floor_targets(aps):
+    floor_caps = {}
+    for ap in aps:
+        lvl = ap["floor"]
+        floor_caps.setdefault(lvl, 0)
+        floor_caps[lvl] += ap.get("max_clients", 20)
+
+    raw_targets = {
+        lvl: int(TOTAL_USERS * FLOOR_DENSITY[lvl])
+        for lvl in FLOOR_DENSITY
+    }
+
+    diff = TOTAL_USERS - sum(raw_targets.values())
+    if diff != 0:
+        top = max(FLOOR_DENSITY.keys())
+        raw_targets[top] += diff
+
+    targets = {}
+    for lvl, t in raw_targets.items():
+        cap = floor_caps.get(lvl, 0)
+        targets[lvl] = min(t, cap)
+
+    return targets
+
+def pick_best_ap(candidates):
+    band_rank = {"6": 3, "5": 2, "2.4": 1}
+    candidates.sort(key=lambda t: (-band_rank[t[1]["band"]], t[0]))
+    return candidates[0]
+
 def generate_users(aps):
     users = []
 
-    # Convert % distribution → counts
-    floor_user_counts = {
-        floor: int(NUM_USERS * FLOOR_DISTRIBUTION[floor])
-        for floor in FLOOR_DISTRIBUTION
+    ap_state = {
+        ap["id"]: {"ap": ap, "user_count": 0, "airtime_used": 0}
+        for ap in aps
     }
 
-    # Adjust rounding to reach 120 exactly
-    total = sum(floor_user_counts.values())
-    diff = NUM_USERS - total
-    if diff != 0:
-        floor_user_counts[1] += diff
+    per_floor_target = compute_floor_targets(aps)
 
-    # Now generate users floor by floor
-    for floor, count in floor_user_counts.items():
+    for level, target_count in per_floor_target.items():
+        if target_count <= 0:
+            continue
 
-        floor_obj = find_floor(floor)
-        rooms = floor_obj["rooms"]
+        floor = find_floor(level)
+        rooms = floor["rooms"]
+        aps_here = [ap for ap in aps if ap["floor"] == level]
 
-        for _ in range(count):
+        placed = 0
+        attempts = 0
+        max_attempts = target_count * 15
+
+        while placed < target_count and attempts < max_attempts:
+            attempts += 1
+
             room = random.choice(rooms)
-            x, y = place_point_in_room(room)
+            x, y = rand_point(room)
 
-            # Choose nearest AP on the same floor
-            aps_on_floor = [ap for ap in aps if ap["floor"] == floor]
-            best_ap = min(
-                aps_on_floor,
-                key=lambda ap: euclid((x, y), (ap["x"], ap["y"]))
-            )
-            dist = euclid((x, y), (best_ap["x"], best_ap["y"]))
-            rssi = calculate_rssi(dist / 10)
+            airtime_usage = random.randint(1, 5)
 
-            users.append({
+            # 🔥 NOTICE: NO COVERAGE CHECK ANYMORE 🔥
+            candidates = []
+            for ap in aps_here:
+                st = ap_state[ap["id"]]
+
+                if st["user_count"] >= ap["max_clients"]:
+                    continue
+
+                safe_air = ap["airtime_capacity"] * AIRTIME_UTILIZATION_SAFETY
+                if st["airtime_used"] + airtime_usage > safe_air:
+                    continue
+
+                d = dist((x, y), (ap["x"], ap["y"]))
+                candidates.append((d, ap, st))
+
+            if not candidates:
+                break
+
+            _, best_ap, best_state = pick_best_ap(candidates)
+
+            d_ap = dist((x, y), (best_ap["x"], best_ap["y"]))
+            rssi = rssi_from_dist(d_ap, best_ap["band"])
+
+            new_user = {
                 "id": f"User_{len(users)+1}",
-                "floor": floor,
+                "floor": level,
                 "room": room["name"],
                 "x": round(x, 2),
                 "y": round(y, 2),
                 "connected_ap": best_ap["id"],
-                "airtime_usage": random.randint(1, 5),
-                "RSSI": rssi
-            })
+                "assigned_ap": best_ap["id"],
+                "airtime_usage": airtime_usage,
+                "RSSI": rssi,
+            }
 
-            best_ap["client_count"] += 1
+            users.append(new_user)
 
-    # Compute load
-    for ap in aps:
-        base = ap["client_count"] * 100 / ap["max_clients"]
-        ap["load"] = int(max(0, min(100, base + random.uniform(-5, 5))))
+            best_state["user_count"] += 1
+            best_state["airtime_used"] += airtime_usage
+
+            placed += 1
 
     return users
 
-
-# -------------------------------
-def save_json(data, path):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
-
-
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
 def main():
-    aps = generate_access_points()
+    print("ROOT:", ROOT)
+    print("LAYOUT:", LAYOUT_PATH)
+
+    aps = generate_aps()
     users = generate_users(aps)
 
-    save_json(aps, OUT_DIR / "aps.json")
-    save_json(users, OUT_DIR / "users.json")
+    (OUT_DIR / "aps.json").write_text(json.dumps(aps, indent=4))
+    (OUT_DIR / "users.json").write_text(json.dumps(users, indent=4))
 
-    print("\n✔ Generated APs & Users with realistic floor distribution\n")
-    print("Floor counts:", {f: sum(1 for u in users if u["floor"] == f) for f in FLOOR_DISTRIBUTION})
-
+    print("\n✔ DATA GENERATED SUCCESSFULLY")
+    print("AP count:", len(aps))
+    print("User count:", len(users))
 
 if __name__ == "__main__":
     main()

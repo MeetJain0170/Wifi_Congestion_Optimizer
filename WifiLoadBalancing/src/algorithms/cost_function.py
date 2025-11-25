@@ -1,95 +1,135 @@
 import math
 
-# -----------------------------
-# Tunable weight parameters
-# -----------------------------
-WEIGHTS = {
-    "distance": 1.0,
-    "signal_penalty": 1.5,
-    "airtime_usage": 2.0,
-    "sticky_penalty": 5.0,
-    "interference": 3.0,
-    "switching_cost": 1.0
+# ============================================================
+# Tunable Weights
+# ============================================================
+W = {
+    "distance":      0.20,
+    "signal":        0.50,
+    "airtime":       1.00,
+    "sticky":        0.40,
+    "interference":  0.20,
+    "load":          0.60,   # NEW → AP load penalty
 }
 
-# RSSI threshold to detect sticky clients
-RSSI_THRESHOLD = -75  # if RSSI < -75, client is sticky
+RSSI_THRESHOLD = -75
+FLOOR_PENALTY = 10_000          # Hard block: cross-floor assignment is illegal
 
 
-# -----------------------------
-# Helper functions
-# -----------------------------
-def euclidean_distance(user, ap):
-    return math.dist((user["x"], user["y"]), (ap["x"], ap["y"]))
+# ============================================================
+# 1. Dynamic AP Capacity (Real WiFi Controllers)
+# ============================================================
+def dynamic_capacity(ap):
+    """
+    Real enterprise WiFi (Cisco/Aruba) automatically increases
+    per-AP effective capacity when user count rises.
+
+    This function implements:
+        C_eff = base * (1 + α * log(1 + users))
+    """
+
+    base = ap.get("airtime_capacity", 100)
+    users = ap.get("user_count", 0)
+    alpha = 0.25  # Smooth boosting
+
+    # Safe log
+    boosted = base * (1 + alpha * math.log(1 + users))
+
+    return max(base, boosted)
+
+
+# ============================================================
+# 2. Helper Functions
+# ============================================================
+def euclidean_distance(u, ap):
+    try:
+        return math.dist((u["x"], u["y"]), (ap["x"], ap["y"]))
+    except Exception:
+        return 9999.0
 
 
 def signal_penalty(RSSI):
-    """Convert RSSI into a positive penalty (worse signal = larger penalty)."""
-    # Normal RSSI range: -40 (best) to -90 (worst)
-    # Convert to positive cost
-    return max(0, (-RSSI - 40) / 10)
+    """
+    Convert RSSI → cost
+    RSSI ranges between -40 (best) and -95 (worst)
+    """
+    return max(0.0, (-RSSI - 40.0) / 10.0)
 
 
-def sticky_client_penalty(RSSI):
-    """Penalty for sticky clients (low RSSI)."""
-    if RSSI < RSSI_THRESHOLD:
-        return 1  # will be multiplied by sticky weight
-    return 0
+def sticky_penalty(RSSI):
+    """
+    If RSSI is weak, discourage handoff.
+    """
+    return 1.0 if RSSI < RSSI_THRESHOLD else 0.0
 
 
 def interference_penalty(ap):
-    """AP interference score 0–1."""
-    return ap.get("interference_score", 0.0)
+    return float(ap.get("interference_score", 0.0))
 
 
-# -----------------------------
-# MAIN COST COMPUTATION
-# -----------------------------
+def load_penalty(ap):
+    """
+    Cost increases as AP approaches its dynamic effective capacity.
+    """
+    load = ap.get("load", 0.0)
+    cap = dynamic_capacity(ap)
+
+    if cap <= 0:
+        return 5.0  # emergency
+
+    t = load / cap              # 0 → 1 range
+    t = max(0, min(1.5, t))     # clamp for safety
+
+    return t
+
+
+# ============================================================
+# MAIN COST FUNCTION (Floor-Safe)
+# ============================================================
 def compute_cost(user, ap):
     """
-    Compute total cost for assigning a user to a specific AP.
-    Lower cost = more likely MCMF will pick that AP.
+    Cost for MCMF edges.
+    Lower = better.
     """
 
-    # 1. Distance component
+    # ---------------------------
+    # HARD RESTRICTION:
+    # No cross-floor connection ever.
+    # ---------------------------
+    if user.get("floor") != ap.get("floor"):
+        return FLOOR_PENALTY
+
+    # ---------------------------
+    # Distance
+    # ---------------------------
     dist = euclidean_distance(user, ap)
 
-    # 2. Signal strength penalty
-    sig_pen = signal_penalty(user["RSSI"])
+    # ---------------------------
+    # RSSI via log-distance model
+    # ---------------------------
+    try:
+        temp_rssi = -30 - 20 * math.log10(max(dist, 1.0))
+    except ValueError:
+        temp_rssi = -95
 
-    # 3. Airtime consumption cost
-    air_pen = user["airtime_usage"]
+    temp_rssi = max(-95, min(-40, temp_rssi))
 
-    # 4. Sticky client penalty
-    sticky_pen = sticky_client_penalty(user["RSSI"])
+    # ---------------------------
+    # Cost components
+    # ---------------------------
+    sig = signal_penalty(temp_rssi)
+    air = float(user.get("airtime_usage", 1))
+    sticky = sticky_penalty(temp_rssi)
+    inter = interference_penalty(ap)
+    load = load_penalty(ap)  # NEW
 
-    # 5. Interference penalty (AP-level)
-    inter_pen = interference_penalty(ap)
-
-    # 6. Optional switching cost (for dynamic phase)
-    switching_cost = 0  # can be updated later during greedy rebalancing
-
-    # -----------------------------
-    # Weighted Sum of Costs
-    # -----------------------------
-    total_cost = (
-        WEIGHTS["distance"] * dist +
-        WEIGHTS["signal_penalty"] * sig_pen +
-        WEIGHTS["airtime_usage"] * air_pen +
-        WEIGHTS["sticky_penalty"] * sticky_pen +
-        WEIGHTS["interference"] * inter_pen +
-        WEIGHTS["switching_cost"] * switching_cost
+    total = (
+        W["distance"]      * dist +
+        W["signal"]        * sig +
+        W["airtime"]       * air +
+        W["sticky"]        * sticky +
+        W["interference"]  * inter +
+        W["load"]          * load       # NEW → makes system self-balancing
     )
 
-    return round(total_cost, 3)
-
-
-# -----------------------------
-# Debugging test
-# -----------------------------
-if __name__ == "__main__":
-    # Fake sample data
-    user = {"x": 10, "y": 10, "RSSI": -78, "airtime_usage": 3}
-    ap = {"x": 15, "y": 15, "interference_score": 0.4}
-
-    print("Cost:", compute_cost(user, ap))
+    return round(total, 3)
