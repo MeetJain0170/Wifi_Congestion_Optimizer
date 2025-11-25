@@ -1,5 +1,6 @@
 # 📡 WiFi Congestion Balancing System  
-<p align="center"> <img alt="Project Demo" src="/mnt/data/5387247c-063d-4261-92a2-898e3f71c0d5.png"><img alt="Python" src="https://img.shields.io/badge/python-3.10+-yellow"> </p>
+<p align="center"><img alt="HTML" src="https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white">
+<img alt="Python" src="https://img.shields.io/badge/python-3.10+-yellow"> </p>
 ### Intelligent Multi-Floor AP Load Distribution • Real-time Visualization • Algorithmic Network Simulation
 
 This project simulates and visualizes **WiFi Access Point congestion** across a multi-floor campus using advanced algorithms, live WebSocket updates, and an interactive D3.js interface.
