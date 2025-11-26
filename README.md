@@ -180,12 +180,12 @@ WifiLoadBalancing/frontend/index.html
 ---
 
 ## 👨‍💻 Authors
-**Meet Jain**  
+**Meet Jain**  (Frontend, AP-Killer and Bandwidth Implementation)
 - Email: meetjain1333@gmail.com
   
-**Reva Shukla** 
+**Reva Shukla** (Backend, MCMF, Graph Model and Cost Function Implementation)
 
-**Niyati Sardana**
+**Niyati Sardana** (Backend, Greedy Distribution and Priority Queue Implementation)
 
 ---
 
